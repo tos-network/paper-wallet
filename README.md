@@ -2,6 +2,8 @@
 
 Offline-first wallet generator for the TOS Network. Built in Rust, compiled to WebAssembly, and wrapped in a static web UI that can be served locally or from any static host.
 
+**🌐 Live Version: [https://paperwallet.tos.network/](https://paperwallet.tos.network/)**
+
 ---
 
 ## Highlights
@@ -72,12 +74,34 @@ Unit tests cover address prefixes, scalar uniqueness, mnemonic integrity, and ze
 
 ## Deployment
 
-### Cloudflare Workers (Dashboard Flow)
-1. Run `./build.sh`.
-2. Zip or upload the `web/` directory contents and the provided `worker.js` script.
-3. In the Cloudflare dashboard: **Workers & Pages → Create Application → Create Worker → Upload assets**.
-4. Paste the following module Worker into the editor if the default template is empty:
-   ```js
+### Method 1: Cloudflare Workers with Wrangler CLI (Recommended)
+
+**Prerequisites:**
+- A Cloudflare account
+- Node.js and npm installed
+- Project built (run `./build.sh`)
+
+**Steps:**
+```bash
+# 1. Install Wrangler
+npm install -g wrangler
+
+# 2. Login to Cloudflare
+wrangler login
+
+# 3. Deploy
+wrangler deploy
+```
+
+Wrangler will read `wrangler.toml`, upload the `web/` directory, deploy `worker.js`, and provide a URL like: `https://tos-paper-wallet.YOUR-SUBDOMAIN.workers.dev`
+
+### Method 2: Cloudflare Workers via Dashboard
+
+1. Build the project: `./build.sh`
+2. Go to: https://dash.cloudflare.com/YOUR-ACCOUNT-ID/workers-and-pages/create/workers
+3. Click **"Create Worker"**, name it `tos-paper-wallet`, click **"Deploy"**
+4. Replace the default code with the contents of `worker.js`:
+   ```javascript
    export default {
      async fetch(request, env, ctx) {
        try {
@@ -88,10 +112,79 @@ Unit tests cover address prefixes, scalar uniqueness, mnemonic integrity, and ze
      },
    };
    ```
-5. Click **Save and Deploy**, then verify the generated `.workers.dev` URL.
+5. Click **"Save and Deploy"**
+6. In **"Settings"** → **"Bindings"**, add an **"Assets"** binding named `ASSETS`
+7. Go to **"Assets"** tab, upload all files from `web/` directory (including `pkg/` folder contents)
+8. Your wallet will be available at: `https://tos-paper-wallet.YOUR-SUBDOMAIN.workers.dev`
 
-### Other Static Hosts
-- GitHub Pages, Netlify, Vercel, or traditional web servers can host the `web/` directory without modifications.
+### Method 3: Cloudflare Pages
+
+1. Visit: https://dash.cloudflare.com/YOUR-ACCOUNT-ID/pages
+2. Click **"Create application"** → **"Upload assets"**
+3. Select all files from `web/` directory, name it `tos-paper-wallet`
+4. Click **"Deploy site"**
+5. Your site will be at: `https://tos-paper-wallet.pages.dev`
+
+**Note:** Pages doesn't need `worker.js` - it serves static files directly.
+
+### Method 4: Other Static Hosts
+
+- **GitHub Pages, Netlify, Vercel**, or traditional web servers can host the `web/` directory without modifications.
+
+### Verify Deployment
+
+After deployment, verify:
+1. ✅ Page loads without errors
+2. ✅ "Generate New Wallet" button works
+3. ✅ QR codes appear
+4. ✅ All themes work
+5. ✅ Language switcher works
+6. ✅ No network requests to external domains (check browser DevTools → Network tab)
+
+### Custom Domain (Optional)
+
+1. Go to your worker/page settings
+2. Click **"Triggers"** → **"Custom Domains"**
+3. Click **"Add Custom Domain"**
+4. Enter your domain (e.g., `paperwallet.tos.network`)
+5. Follow the DNS setup instructions
+
+### Update Deployment
+
+**Using Wrangler CLI:**
+```bash
+./build.sh
+wrangler deploy
+```
+
+**Using Dashboard:**
+1. Rebuild: `./build.sh`
+2. Go to your worker/page in Cloudflare dashboard
+3. Upload new files from `web/` directory
+4. Click **"Deploy"**
+
+### Troubleshooting
+
+**Error: "env.ASSETS is undefined"**
+- Make sure you've set up the Assets binding correctly in worker settings.
+
+**Error: "Module not found"**
+- Ensure all files from `web/pkg/` are uploaded: `tos_paper_wallet.js`, `tos_paper_wallet_bg.wasm`
+
+**QR codes not showing**
+- Make sure `qrcode.min.js` is uploaded and accessible.
+
+**WASM loading error**
+- Check that `tos_paper_wallet_bg.wasm` is uploaded
+- Verify file path in `app.js` matches uploaded location
+- Check browser console for error messages
+
+### Cost
+
+- **Cloudflare Workers Free Tier:** 100,000 requests/day
+- **Cloudflare Pages Free Tier:** Unlimited requests, 500 builds/month
+
+Both options are **free** for this use case! 🎉
 
 ---
 
