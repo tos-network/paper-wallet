@@ -158,19 +158,19 @@
         <div class="controls-card no-print animate-in">
             <div class="network-selector">
                 <label class="radio-label">
-                    <input type="radio" name="network" value="testnet" checked>
-                    <span class="radio-custom"></span>
-                    <span class="radio-text">
-                        <strong data-i18n="network.testnet">Testnet</strong>
-                        <small data-i18n="network.testnet.desc">For testing purposes</small>
-                    </span>
-                </label>
-                <label class="radio-label">
-                    <input type="radio" name="network" value="mainnet">
+                    <input type="radio" name="network" value="mainnet" checked>
                     <span class="radio-custom"></span>
                     <span class="radio-text">
                         <strong data-i18n="network.mainnet">Mainnet</strong>
                         <small data-i18n="network.mainnet.desc">Real TOS network</small>
+                    </span>
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="network" value="testnet">
+                    <span class="radio-custom"></span>
+                    <span class="radio-text">
+                        <strong data-i18n="network.testnet">Testnet</strong>
+                        <small data-i18n="network.testnet.desc">For testing purposes</small>
                     </span>
                 </label>
             </div>
@@ -187,7 +187,7 @@
         <div id="walletDisplay" class="wallet-card hidden">
             <div class="wallet-header">
                 <h2 data-i18n="wallet.header">Your Paper Wallet</h2>
-                <span id="networkBadge" class="network-badge">Testnet</span>
+                <span id="networkBadge" class="network-badge">Mainnet</span>
             </div>
 
             <!-- Address Section -->
