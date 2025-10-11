@@ -1298,6 +1298,7 @@ code, .wallet-address, .wallet-private-key {
 
 .seed-section .btn-copy {
     width: auto;
+    max-width: 100%;
     height: auto;
     padding: 12px 24px;
     gap: 8px;
@@ -1307,7 +1308,7 @@ code, .wallet-address, .wallet-private-key {
 
 .seed-words {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 10px;
     padding: 20px;
     background: var(--bg-secondary);
