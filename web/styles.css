@@ -1171,15 +1171,26 @@ code, .wallet-address, .wallet-private-key {
         font-size: 1rem;
     }
 
+    /* Make theme switcher vertical on mobile */
     .theme-switcher {
         top: 10px;
         right: 10px;
         padding: 6px;
+        flex-direction: column;
+        gap: 6px;
     }
 
     .theme-btn {
         width: 36px;
         height: 36px;
+    }
+
+    /* Language dropdown positioning for mobile */
+    .lang-dropdown {
+        right: 0;
+        left: auto;
+        max-height: 300px;
+        overflow-y: auto;
     }
 
     .wallet-header {
@@ -1193,9 +1204,11 @@ code, .wallet-address, .wallet-private-key {
         height: 150px;
     }
 
+    /* Make seed words responsive - auto-fit columns based on available space */
     .seed-words {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
         gap: 8px;
+        padding: 15px;
     }
 
     .seed-word {
@@ -1213,9 +1226,53 @@ code, .wallet-address, .wallet-private-key {
         font-size: 0.85rem;
     }
 
+    /* Make copy button fit within container */
     .seed-section .btn-copy {
         padding: 10px 20px;
         font-size: 0.9rem;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .seed-section .key-display {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+}
+
+/* Extra small screens (phones in portrait) */
+@media (max-width: 480px) {
+    /* Make seed words 2 columns on very small screens */
+    .seed-words {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 6px;
+        padding: 10px;
+    }
+
+    .seed-word {
+        padding: 5px 8px;
+        gap: 5px;
+    }
+
+    .seed-word-number {
+        width: 22px;
+        height: 22px;
+        font-size: 0.65rem;
+    }
+
+    .seed-word-text {
+        font-size: 0.8rem;
+    }
+
+    /* Smaller theme buttons on very small screens */
+    .theme-btn {
+        width: 32px;
+        height: 32px;
+    }
+
+    .theme-btn svg {
+        width: 18px;
+        height: 18px;
     }
 }
 
