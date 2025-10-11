@@ -844,10 +844,23 @@ code, .wallet-address, .wallet-private-key {
 /* ==================== Footer ==================== */
 
 .footer {
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
     padding: 40px 20px;
     color: var(--text-muted);
     font-size: 0.9rem;
+}
+
+.secure-badge {
+    height: 80px;
+    width: auto;
+    flex-shrink: 0;
+}
+
+.footer-text {
+    text-align: center;
 }
 
 .footer p {
@@ -1247,6 +1260,17 @@ code, .wallet-address, .wallet-private-key {
         overflow-y: auto;
     }
 
+    /* Footer responsive layout on mobile */
+    .footer {
+        flex-direction: column;
+        gap: 16px;
+        padding: 30px 20px;
+    }
+
+    .secure-badge {
+        height: 60px;
+    }
+
     .wallet-header {
         flex-direction: column;
         gap: 15px;
@@ -1331,6 +1355,11 @@ code, .wallet-address, .wallet-private-key {
     .theme-btn {
         width: 32px;
         height: 32px;
+    }
+
+    /* Smaller secure badge on very small screens */
+    .secure-badge {
+        height: 50px;
     }
 
     .theme-btn svg {
