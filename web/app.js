@@ -34,6 +34,37 @@ function setTheme(theme) {
     localStorage.setItem('tos-wallet-theme', theme);
 }
 
+// ==================== Hamburger Menu ====================
+
+function initHamburgerMenu() {
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const menuContent = document.getElementById('menuContent');
+
+    if (!hamburgerBtn || !menuContent) return;
+
+    // Toggle menu on button click
+    hamburgerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menuContent.classList.toggle('active');
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!menuContent.contains(e.target) && e.target !== hamburgerBtn) {
+            menuContent.classList.remove('active');
+        }
+    });
+
+    // Close menu when selecting a theme
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setTimeout(() => {
+                menuContent.classList.remove('active');
+            }, 200);
+        });
+    });
+}
+
 // ==================== Language Selector ====================
 
 function initLanguageSelector() {
@@ -414,6 +445,9 @@ async function init() {
 
     // Initialize theme
     initTheme();
+
+    // Initialize hamburger menu
+    initHamburgerMenu();
 
     // Initialize language selector
     initLanguageSelector();

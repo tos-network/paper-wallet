@@ -159,19 +159,67 @@ code, .wallet-address, .wallet-private-key {
 
 /* ==================== Theme Switcher ==================== */
 
-.theme-switcher {
+/* Settings Menu (Hamburger) */
+.settings-menu {
     position: fixed;
     top: 20px;
     right: 20px;
+    z-index: 1000;
+}
+
+.hamburger-btn {
+    width: 48px;
+    height: 48px;
+    border: none;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    cursor: pointer;
+    border-radius: 12px;
     display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 20px var(--shadow);
+    backdrop-filter: blur(10px);
+}
+
+.hamburger-btn:hover {
+    background: var(--bg-hover);
+    color: var(--accent-primary);
+    transform: scale(1.05);
+}
+
+.hamburger-btn svg {
+    width: 24px;
+    height: 24px;
+}
+
+.menu-content {
+    position: absolute;
+    top: 60px;
+    right: 0;
+    display: flex;
+    flex-direction: column;
     gap: 8px;
     background: var(--bg-card);
     padding: 8px;
     border-radius: 16px;
     border: 1px solid var(--border);
     box-shadow: 0 4px 20px var(--shadow);
-    z-index: 1000;
     backdrop-filter: blur(10px);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.menu-content.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: all;
 }
 
 .theme-btn {
@@ -1171,13 +1219,19 @@ code, .wallet-address, .wallet-private-key {
         font-size: 1rem;
     }
 
-    /* Make theme switcher vertical on mobile */
-    .theme-switcher {
+    /* Hamburger menu on mobile */
+    .settings-menu {
         top: 10px;
         right: 10px;
-        padding: 6px;
-        flex-direction: column;
-        gap: 6px;
+    }
+
+    .hamburger-btn {
+        width: 44px;
+        height: 44px;
+    }
+
+    .menu-content {
+        top: 54px;
     }
 
     .theme-btn {
@@ -1264,7 +1318,16 @@ code, .wallet-address, .wallet-private-key {
         font-size: 0.8rem;
     }
 
-    /* Smaller theme buttons on very small screens */
+    /* Smaller menu on very small screens */
+    .hamburger-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .menu-content {
+        top: 50px;
+    }
+
     .theme-btn {
         width: 32px;
         height: 32px;

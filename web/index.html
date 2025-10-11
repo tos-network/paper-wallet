@@ -10,8 +10,17 @@
 </head>
 <body>
     <!-- Theme & Language Switcher -->
-    <div class="theme-switcher no-print">
-        <button class="theme-btn" data-theme="dark" title="Dark Theme">
+    <div class="settings-menu no-print">
+        <!-- Hamburger Menu Button -->
+        <button class="hamburger-btn" id="hamburgerBtn" title="Settings">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+            </svg>
+        </button>
+
+        <!-- Collapsible Menu Content -->
+        <div class="menu-content" id="menuContent">
+            <button class="theme-btn" data-theme="dark" title="Dark Theme">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>
         </button>
         <button class="theme-btn" data-theme="light" title="Light Theme">
@@ -108,6 +117,7 @@
                     <span class="lang-icon"></span>
                 </div>
             </div>
+        </div>
         </div>
     </div>
 
