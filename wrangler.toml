@@ -1,0 +1,7 @@
+name = "tos-paper-wallet"
+main = "worker.js"
+workers_dev = true
+compatibility_date = "2025-10-11"
+
+[site]
+bucket = "./web"

@@ -1,0 +1,33 @@
+[package]
+name = "tos-paper-wallet"
+version = "0.1.0"
+edition = "2021"
+authors = ["TOS Network Team <info@tos.network>"]
+license = "BSD-3-Clause"
+description = "TOS Network Paper Wallet Generator - Standalone WASM"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "=0.2.92"
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+js-sys = "=0.3.69"
+console_error_panic_hook = "0.1"
+web-sys = { version = "=0.3.69", features = ["console"] }
+
+# Cryptography (WASM-compatible versions)
+# Use TOS Network forks to ensure compatibility
+curve25519-dalek = { git = "https://github.com/tos-network/curve25519-dalek", tag = "v4.2.0", features = ["rand_core"] }
+bulletproofs = { git = "https://github.com/tos-network/bulletproofs", tag = "v5.0.2", default-features = false, features = ["std"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+getrandom = { version = "0.2", features = ["js"] }
+bech32 = "0.9"
+crc32fast = "1.4"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = "debuginfo"
+panic = "abort"
