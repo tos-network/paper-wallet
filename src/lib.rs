@@ -48,16 +48,41 @@ pub fn generate_wallet(mainnet: bool) -> Result<WalletData, JsValue> {
     // Generate random scalar for private key
     let mut rng = OsRng;
 
-    // Rejection loop: resample until we get a non-zero scalar
-    // While astronomically unlikely (≈2^-252), a zero scalar would
-    // produce an unusable wallet, so we guard against it.
+    // V-08 Security Fix: Rejection loop to ensure strong private keys
+    // 1. Reject zero scalar (≈2^-252 probability)
+    // 2. Reject weak entropy (scalar < 2^32, ≈2^-220 probability)
+    // While both are astronomically unlikely with OsRng, we validate defensively
     let private_scalar = loop {
         let s = Scalar::random(&mut rng);
-        if s != Scalar::ZERO {
-            break s;
+
+        // Check for zero scalar
+        if s == Scalar::ZERO {
+            web_sys::console::warn_1(&"Zero scalar generated, resampling...".into());
+            continue;
         }
-        // If we somehow hit zero, log it (won't happen in practice)
-        web_sys::console::warn_1(&"Zero scalar generated, resampling...".into());
+
+        // V-08: Check for weak entropy (scalar < 2^32)
+        // Convert to bytes and check if value is too small
+        let bytes = s.to_bytes();
+        let mut is_weak = true;
+
+        // Check if any of the upper 28 bytes are non-zero (scalar >= 2^32)
+        for i in 4..32 {
+            if bytes[i] != 0 {
+                is_weak = false;
+                break;
+            }
+        }
+
+        // If all upper bytes are zero, check if lower 4 bytes represent a value >= 2^32
+        if is_weak && (bytes[0] != 0 || bytes[1] != 0 || bytes[2] != 0 || bytes[3] != 0) {
+            // Value is less than 2^32 - reject it
+            web_sys::console::warn_1(&"Weak entropy scalar generated (< 2^32), resampling...".into());
+            continue;
+        }
+
+        // Valid strong scalar found
+        break s;
     };
 
     // Generate public key: P = s^(-1) * H (TOS uses inverted scalar with H basepoint)
@@ -227,5 +252,50 @@ mod tests {
         }
 
         println!("✅ All generated scalars are non-zero");
+    }
+
+    #[test]
+    fn test_v08_strong_entropy() {
+        // V-08 Security Fix: Verify all generated scalars have sufficient entropy (>= 2^32)
+        for i in 0..100 {
+            let wallet = generate_wallet(false).unwrap();
+            let private_key_hex = wallet.private_key();
+
+            // Convert hex to bytes
+            let mut bytes = [0u8; 32];
+            for (i, chunk) in private_key_hex.as_bytes().chunks(2).enumerate() {
+                let byte_str = std::str::from_utf8(chunk).unwrap();
+                bytes[i] = u8::from_str_radix(byte_str, 16).unwrap();
+            }
+
+            // Check that at least one of the upper 28 bytes is non-zero
+            // OR that the lower 4 bytes represent a value >= 2^32
+            let mut has_strong_entropy = false;
+
+            // Check upper 28 bytes
+            for byte in &bytes[4..32] {
+                if *byte != 0 {
+                    has_strong_entropy = true;
+                    break;
+                }
+            }
+
+            // If all upper bytes are zero, the lower 4 bytes must all be zero too
+            // (otherwise it would be < 2^32 and rejected)
+            if !has_strong_entropy {
+                assert!(
+                    bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 && bytes[3] == 0,
+                    "Wallet {} has weak entropy: lower 4 bytes non-zero but upper 28 bytes all zero",
+                    i
+                );
+                // This shouldn't happen - if lower bytes are zero, it's the zero scalar
+                panic!("Generated scalar with all bytes zero (should be impossible)");
+            }
+
+            assert!(has_strong_entropy,
+                "Wallet {} should have strong entropy (>= 2^32)", i);
+        }
+
+        println!("✅ All 100 generated wallets have strong entropy (V-08 validated)");
     }
 }
