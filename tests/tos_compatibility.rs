@@ -10,8 +10,8 @@ use curve25519_dalek::{
     ristretto::RistrettoPoint,
     scalar::Scalar
 };
-use bulletproofs::PedersenGens;
 use rand_core::OsRng;
+use sha3::Sha3_512;
 
 // Import from tos-common (we need to add this as a dev-dependency)
 // For now, we'll replicate the TOS logic here to verify compatibility
@@ -35,10 +35,10 @@ fn generate_tos_address(public_point: &RistrettoPoint, mainnet: bool) -> String 
     bech32::encode(hrp, payload.to_base32(), Variant::Bech32).unwrap()
 }
 
-/// Helper: Generate public key using TOS's method (s^-1 * H)
+/// Helper: Generate public key using TOS's method (H * s)
 fn generate_tos_public_key(private_scalar: &Scalar) -> RistrettoPoint {
-    let pc_gens = PedersenGens::default();
-    private_scalar.invert() * pc_gens.B_blinding
+    let h_point = RistrettoPoint::hash_from_bytes::<Sha3_512>(b"TOS_SIGNATURE_GENERATOR_H");
+    h_point * private_scalar
 }
 
 #[test]
@@ -64,8 +64,8 @@ fn test_100_random_wallets_compatibility() {
 
         // Generate public key and address using paper-wallet logic
         // (This is the same as TOS, so should match)
-        let pc_gens = PedersenGens::default();
-        let public_key_paper = private_scalar.invert() * pc_gens.B_blinding;
+        let h_point = RistrettoPoint::hash_from_bytes::<Sha3_512>(b"TOS_SIGNATURE_GENERATOR_H");
+        let public_key_paper = h_point * private_scalar;
         let address_paper_mainnet = generate_tos_address(&public_key_paper, true);
         let address_paper_testnet = generate_tos_address(&public_key_paper, false);
 

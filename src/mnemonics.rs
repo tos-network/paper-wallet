@@ -26,6 +26,50 @@ fn calculate_checksum_index(words: &[&str]) -> u32 {
     checksum % SEED_LENGTH as u32
 }
 
+/// Convert words to a Scalar (private key)
+pub fn words_to_scalar(words: &[&str]) -> Result<Scalar, String> {
+    if !(words.len() == SEED_LENGTH + 1 || words.len() == SEED_LENGTH) {
+        return Err("Invalid words count".to_string());
+    }
+
+    // Verify checksum if 25 words
+    if words.len() == SEED_LENGTH + 1 {
+        let checksum_index = calculate_checksum_index(&words[0..SEED_LENGTH]);
+        if words[checksum_index as usize] != words[SEED_LENGTH] {
+            return Err("Invalid checksum".to_string());
+        }
+    }
+
+    // Find word indices
+    let mut indices = Vec::new();
+    for word in &words[0..SEED_LENGTH] {
+        let index = WORDS.iter().position(|w| w.eq_ignore_ascii_case(word))
+            .ok_or_else(|| format!("Word not found: {}", word))?;
+        indices.push(index);
+    }
+
+    // Convert indices to bytes
+    let mut dest = Vec::with_capacity(KEY_SIZE);
+    for i in (0..SEED_LENGTH).step_by(3) {
+        let a = indices[i];
+        let b = indices[i + 1];
+        let c = indices[i + 2];
+
+        let val = a + WORDS_LIST * (((WORDS_LIST - a) + b) % WORDS_LIST) + WORDS_LIST * WORDS_LIST * (((WORDS_LIST - b) + c) % WORDS_LIST);
+        if val % WORDS_LIST != a {
+            return Err("Word list sanity check error".to_string());
+        }
+
+        let val = val as u32;
+        dest.extend_from_slice(&val.to_le_bytes());
+    }
+
+    let key_bytes: [u8; 32] = dest.try_into()
+        .map_err(|_| "Invalid key from bytes".to_string())?;
+
+    Ok(Scalar::from_bytes_mod_order(key_bytes))
+}
+
 /// Convert a private key (scalar) to a 25-word seed phrase (24 words + 1 checksum word)
 pub fn scalar_to_words(scalar: &Scalar) -> Vec<String> {
     let bytes = scalar.to_bytes();

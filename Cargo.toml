@@ -19,12 +19,13 @@ web-sys = { version = "=0.3.69", features = ["console"] }
 
 # Cryptography (WASM-compatible versions)
 # Use TOS Network forks to ensure compatibility
-curve25519-dalek = { git = "https://github.com/tos-network/curve25519-dalek", tag = "v4.2.0", features = ["rand_core"] }
-bulletproofs = { git = "https://github.com/tos-network/bulletproofs", tag = "v5.0.2", default-features = false, features = ["std"] }
+curve25519-dalek = { git = "https://github.com/tos-network/curve25519-dalek", tag = "v4.2.0", features = ["rand_core", "digest"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
 getrandom = { version = "0.2", features = ["js"] }
 bech32 = "0.9"
 crc32fast = "1.4"
+hex = "0.4"
+sha3 = "0.10"
 
 [profile.release]
 opt-level = "s"

@@ -7,10 +7,10 @@ Offline-first wallet generator for the TOS Network. Built in Rust, compiled to W
 ---
 
 ## Highlights
-- **Deterministic parity** with the official [`tos`](../tos) wallet: identical key, address, and mnemonic derivation using the Pedersen blinding base `H`.
+- **Deterministic parity** with the official [`tos`](../tos) wallet: identical key, address, and mnemonic derivation using the TOS signature generator point `H`.
 - **Air-gap friendly**: no third-party fonts, scripts, or analytics; all assets are local under `web/`.
 - **Feature-rich UI**: five themes, 18 languages, live QR codes, copy helpers, print-ready layout.
-- **Security reviewed**: findings and fixes captured in [`AUDIT.md`](AUDIT.md).
+- **Security focused**: comprehensive regression testing with 2 real wallet test vectors.
 
 ---
 
@@ -19,11 +19,14 @@ Offline-first wallet generator for the TOS Network. Built in Rust, compiled to W
 paper-wallet/
 ├─ build.sh                 # helper script to build WASM + bindings
 ├─ wrangler.toml            # Cloudflare Workers configuration (static assets in ./web)
-├─ AUDIT.md                 # latest formal security audit
 ├─ src/
 │  ├─ lib.rs                # wallet generation logic exposed to JS
 │  ├─ mnemonics.rs          # scalar ⇆ mnemonic conversion
 │  └─ english_words.rs      # 1,626-word English list
+├─ tests/
+│  ├─ regression_test.rs    # regression tests with 2 wallet test vectors
+│  ├─ test_user_seed.rs     # user seed verification test
+│  └─ tos_compatibility.rs  # 100 random wallet compatibility tests
 └─ web/
    ├─ index.html            # single-page UI
    ├─ app.js                # front-end logic and WASM glue
@@ -66,9 +69,23 @@ npx serve                            # any static file server
 
 ## Testing
 ```bash
+# Run all tests (20 tests total)
 cargo test
+
+# Run only regression tests (8 tests with 2 wallet test vectors)
+cargo test --test regression_test
+
+# Run with verbose output
+cargo test -- --nocapture
 ```
-Unit tests cover address prefixes, scalar uniqueness, mnemonic integrity, and zero-scalar rejection.
+
+Test coverage:
+- **Unit tests (7)**: Address prefixes, scalar uniqueness, mnemonic integrity, zero-scalar rejection
+- **Regression tests (8)**: 2 real wallet test vectors ensuring compatibility with TOS wallet
+- **Compatibility tests (4)**: 100 random wallets verified against TOS wallet
+- **User seed test (1)**: Verification of specific user-provided seed
+
+**SAFETY NOTE**: All test seeds and private keys are publicly known test data. DO NOT use them for real funds.
 
 ---
 
@@ -189,11 +206,11 @@ Both options are **free** for this use case! 🎉
 ---
 
 ## Security Notes
-- RNG source: `OsRng` (browser WebCrypto on wasm32) with rejection sampling to avoid zero scalars.
-- Public key: `s⁻¹ * H` using `PedersenGens::default().B_blinding`.
-- Addresses: 32-byte compressed key + address type serialized into Bech32 with HRPs `tos` / `tst`.
-- Mnemonics: 24-word payload + checksum word using the canonical TOS list and CRC32 checksum.
-- Additional recommendations and threat modelling are documented in [`AUDIT.md`](AUDIT.md).
+- **RNG source**: `OsRng` (browser WebCrypto on wasm32) with rejection sampling to avoid zero scalars
+- **Public key**: `H * s` where `H` is the TOS signature generator point (`RistrettoPoint::hash_from_bytes::<Sha3_512>("TOS_SIGNATURE_GENERATOR_H")`)
+- **Addresses**: 32-byte compressed key + address type serialized into Bech32 with HRPs `tos` (mainnet) / `tst` (testnet)
+- **Mnemonics**: 24-word payload + checksum word using the canonical TOS word list (1,626 words) and CRC32 checksum
+- **Regression testing**: 2 real wallet test vectors ensure ongoing compatibility with TOS wallet
 
 ---
 

@@ -3,12 +3,12 @@ use curve25519_dalek::{
     ristretto::RistrettoPoint,
     scalar::Scalar,
 };
-use bulletproofs::PedersenGens;
 use rand_core::OsRng;
 use bech32::{ToBase32, Variant};
+use sha3::Sha3_512;
 
 mod english_words;
-mod mnemonics;
+pub mod mnemonics;
 
 /// Wallet data structure exposed to JavaScript
 #[wasm_bindgen]
@@ -85,10 +85,10 @@ pub fn generate_wallet(mainnet: bool) -> Result<WalletData, JsValue> {
         break s;
     };
 
-    // Generate public key: P = s^(-1) * H (TOS uses inverted scalar with H basepoint)
-    // This matches TOS's PublicKey::new() implementation where H = PC_GENS.B_blinding
-    let pc_gens = PedersenGens::default();
-    let public_point = private_scalar.invert() * pc_gens.B_blinding;
+    // Generate public key: P = H * s (TOS standard Schnorr signature construction)
+    // H is the secondary generator point for signatures, generated deterministically
+    let h_point = RistrettoPoint::hash_from_bytes::<Sha3_512>(b"TOS_SIGNATURE_GENERATOR_H");
+    let public_point = h_point * private_scalar;
 
     // Convert private key to hex string
     let private_key_hex = hex_encode(&private_scalar.to_bytes());
