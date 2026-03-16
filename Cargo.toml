@@ -16,6 +16,12 @@ serde-wasm-bindgen = "0.6"
 js-sys = "=0.3.69"
 console_error_panic_hook = "0.1"
 web-sys = { version = "=0.3.69", features = ["console"] }
+bip39 = "2.1"
+hmac = "0.12"
+k256 = "0.13"
+num-bigint = "0.4"
+num-traits = "0.2"
+sha2 = "0.10"
 
 # Cryptography (WASM-compatible versions)
 # Use TOS Network forks to ensure compatibility

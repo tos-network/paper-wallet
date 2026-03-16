@@ -153,7 +153,7 @@ body {
     transition: background 0.3s ease, color 0.3s ease;
 }
 
-code, .wallet-address, .wallet-private-key {
+code, .wallet-address, .wallet-public-key, .wallet-private-key {
     font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', 'Courier New', 'Consolas', monospace;
 }
 
@@ -660,6 +660,10 @@ code, .wallet-address, .wallet-private-key {
     border-left: 4px solid var(--success);
 }
 
+.public-section {
+    border-left: 4px solid var(--accent-primary);
+}
+
 .private-section {
     border-left: 4px solid var(--danger);
 }
@@ -684,6 +688,11 @@ code, .wallet-address, .wallet-private-key {
 .section-icon.green {
     background: var(--success);
     box-shadow: 0 0 20px var(--success-glow);
+}
+
+.section-icon.blue {
+    background: var(--accent-primary);
+    box-shadow: 0 0 20px var(--accent-glow);
 }
 
 .section-icon.red {
@@ -719,6 +728,10 @@ code, .wallet-address, .wallet-private-key {
     grid-template-columns: auto 1fr;
     gap: 30px;
     align-items: center;
+}
+
+.wallet-content.single-column {
+    grid-template-columns: 1fr;
 }
 
 @media (max-width: 768px) {

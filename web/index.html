@@ -131,8 +131,8 @@
                     <img src="tos-logo.svg" alt="TOS Logo" class="tos-logo">
                 </div>
                 <div class="logo-text">
-                    <h1 data-i18n="app.title">TOS Paper Wallet</h1>
-                    <p class="subtitle" data-i18n="app.subtitle">Generate secure offline wallets for TOS Network</p>
+                    <h1 data-i18n="app.title">TOS Wallet</h1>
+                    <p class="subtitle" data-i18n="app.subtitle">Generate offline TOS and UNO wallet material from one recovery phrase</p>
                 </div>
             </div>
         </header>
@@ -159,19 +159,19 @@
         <div class="controls-card no-print animate-in">
             <div class="network-selector">
                 <label class="radio-label">
-                    <input type="radio" name="network" value="mainnet" checked>
+                    <input type="radio" name="asset" value="tos" checked>
                     <span class="radio-custom"></span>
                     <span class="radio-text">
-                        <strong data-i18n="network.mainnet">Mainnet</strong>
-                        <small data-i18n="network.mainnet.desc">Real TOS network</small>
+                        <strong data-i18n="asset.tos">TOS</strong>
+                        <small data-i18n="asset.tos.desc">Normal TOS Assets</small>
                     </span>
                 </label>
                 <label class="radio-label">
-                    <input type="radio" name="network" value="testnet">
+                    <input type="radio" name="asset" value="uno">
                     <span class="radio-custom"></span>
                     <span class="radio-text">
-                        <strong data-i18n="network.testnet">Testnet</strong>
-                        <small data-i18n="network.testnet.desc">For testing purposes</small>
+                        <strong data-i18n="asset.uno">UNO</strong>
+                        <small data-i18n="asset.uno.desc">Secret UNO Assets</small>
                     </span>
                 </label>
             </div>
@@ -187,8 +187,8 @@
         <!-- Wallet Display -->
         <div id="walletDisplay" class="wallet-card hidden">
             <div class="wallet-header">
-                <h2 data-i18n="wallet.header">Your Paper Wallet</h2>
-                <span id="networkBadge" class="network-badge">Mainnet</span>
+                <h2 data-i18n="wallet.header.materials">Your Wallet Material</h2>
+                <span id="networkBadge" class="network-badge">TOS</span>
             </div>
 
             <!-- Address Section -->
@@ -201,7 +201,7 @@
                     </div>
                     <div>
                         <h3 data-i18n="wallet.address.title">Public Address</h3>
-                        <p class="section-desc" data-i18n="wallet.address.desc">Share this to RECEIVE TOS</p>
+                        <p class="section-desc" data-i18n="wallet.address.generic_desc">Share this address to receive assets</p>
                     </div>
                 </div>
                 <div class="wallet-content">
@@ -211,6 +211,32 @@
                     <div class="key-display">
                         <code id="addressText" class="wallet-address"></code>
                         <button class="btn-copy" data-copy="address">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <rect x="9" y="9" width="13" height="13" rx="2" stroke-width="2"/>
+                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke-width="2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Public Key Section -->
+            <div class="wallet-section public-section">
+                <div class="section-header">
+                    <div class="section-icon blue">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2l7 4v6c0 4.97-3.05 9.41-7 10-3.95-.59-7-5.03-7-10V6l7-4zm0 5a3 3 0 100 6 3 3 0 000-6zm-4 10h8v-2c0-1.66-2.69-2.5-4-2.5S8 13.34 8 15v2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 data-i18n="wallet.publickey.title">Public Key</h3>
+                        <p class="section-desc" data-i18n="wallet.publickey.desc">Signer public key derived from the selected wallet mode</p>
+                    </div>
+                </div>
+                <div class="wallet-content single-column">
+                    <div class="key-display">
+                        <code id="publicKeyText" class="wallet-public-key"></code>
+                        <button class="btn-copy" data-copy="public-key">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                 <rect x="9" y="9" width="13" height="13" rx="2" stroke-width="2"/>
                                 <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke-width="2"/>
@@ -230,7 +256,7 @@
                     </div>
                     <div>
                         <h3 data-i18n="wallet.privatekey.title">Private Key</h3>
-                        <p class="section-desc" data-i18n="wallet.privatekey.desc">NEVER share this! Required to spend funds</p>
+                        <p class="section-desc" data-i18n="wallet.privatekey.generic_desc">Never share this key. It controls the selected wallet.</p>
                     </div>
                 </div>
                 <div class="wallet-content">
@@ -258,8 +284,8 @@
                         </svg>
                     </div>
                     <div>
-                        <h3 data-i18n="wallet.seed.title">Seed Phrase (25 Words)</h3>
-                        <p class="section-desc" data-i18n="wallet.seed.desc">Write this down! Can restore your wallet</p>
+                        <h3 data-i18n="wallet.seed24.title">Recovery Phrase (24 Words)</h3>
+                        <p class="section-desc" data-i18n="wallet.seed24.desc">Write this down once. It derives both TOS and UNO wallet material.</p>
                     </div>
                 </div>
                 <div class="wallet-content">

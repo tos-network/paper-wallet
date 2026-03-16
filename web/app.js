@@ -1,29 +1,45 @@
-// TOS Paper Wallet Application
+// TOS Wallet Application
 
 let wasm = null;
+let currentBundle = null;
+
+function getCurrentLanguage() {
+    return localStorage.getItem('tos-wallet-language') || 'en';
+}
+
+function translate(key, fallback) {
+    return window.translations?.[getCurrentLanguage()]?.[key] || fallback;
+}
+
+function getSelectedAssetType() {
+    return document.querySelector('input[name="asset"]:checked')?.value || 'tos';
+}
+
+function getAssetLabel(assetType) {
+    return assetType === 'uno'
+        ? translate('asset.uno', 'UNO')
+        : translate('asset.tos', 'TOS');
+}
+
+function getDisplayedWallet(bundle, assetType) {
+    return assetType === 'uno' ? bundle.uno : bundle.tos;
+}
 
 // ==================== Theme Management ====================
 
 function initTheme() {
-    // Load saved theme or default to 'dark'
     const savedTheme = localStorage.getItem('tos-wallet-theme') || 'dark';
     setTheme(savedTheme);
 
-    // Setup theme buttons
-    document.querySelectorAll('.theme-btn').forEach(btn => {
+    document.querySelectorAll('.theme-btn').forEach((btn) => {
         const theme = btn.dataset.theme;
-
-        // Set active state
         if (theme === savedTheme) {
             btn.classList.add('active');
         }
 
-        // Add click handler
         btn.addEventListener('click', () => {
             setTheme(theme);
-
-            // Update active state
-            document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.theme-btn').forEach((item) => item.classList.remove('active'));
             btn.classList.add('active');
         });
     });
@@ -40,27 +56,24 @@ function initHamburgerMenu() {
     const hamburgerBtn = document.getElementById('hamburgerBtn');
     const menuContent = document.getElementById('menuContent');
 
-    if (!hamburgerBtn || !menuContent) return;
+    if (!hamburgerBtn || !menuContent) {
+        return;
+    }
 
-    // Toggle menu on button click
-    hamburgerBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
+    hamburgerBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
         menuContent.classList.toggle('active');
     });
 
-    // Close menu when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!menuContent.contains(e.target) && e.target !== hamburgerBtn) {
+    document.addEventListener('click', (event) => {
+        if (!menuContent.contains(event.target) && event.target !== hamburgerBtn) {
             menuContent.classList.remove('active');
         }
     });
 
-    // Close menu when selecting a theme
-    document.querySelectorAll('.theme-btn').forEach(btn => {
+    document.querySelectorAll('.theme-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
-            setTimeout(() => {
-                menuContent.classList.remove('active');
-            }, 200);
+            setTimeout(() => menuContent.classList.remove('active'), 200);
         });
     });
 }
@@ -71,26 +84,23 @@ function initLanguageSelector() {
     const langBtn = document.getElementById('langBtn');
     const langDropdown = document.getElementById('langDropdown');
 
-    if (!langBtn || !langDropdown) return;
+    if (!langBtn || !langDropdown) {
+        return;
+    }
 
-    // Toggle dropdown on button click
-    langBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
+    langBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
         langDropdown.classList.toggle('show');
     });
 
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!langDropdown.contains(e.target) && e.target !== langBtn) {
+    document.addEventListener('click', (event) => {
+        if (!langDropdown.contains(event.target) && event.target !== langBtn) {
             langDropdown.classList.remove('show');
         }
     });
 
-    // Close dropdown when selecting a language (handled by i18n.js)
     langDropdown.addEventListener('click', () => {
-        setTimeout(() => {
-            langDropdown.classList.remove('show');
-        }, 200);
+        setTimeout(() => langDropdown.classList.remove('show'), 200);
     });
 }
 
@@ -100,20 +110,16 @@ async function initWasm() {
     const overlay = document.getElementById('loadingOverlay');
 
     try {
-        // Import WASM module
         wasm = await import('./pkg/tos_paper_wallet.js');
         await wasm.default();
 
-        console.log('✅ WASM module loaded successfully');
-
-        // Hide loading overlay
         setTimeout(() => {
             overlay.classList.add('hidden');
         }, 500);
 
         return true;
     } catch (error) {
-        console.error('❌ Failed to load WASM module:', error);
+        console.error('Failed to load WASM module:', error);
         overlay.innerHTML = `
             <div style="text-align: center; padding: 40px;">
                 <div style="font-size: 3rem; margin-bottom: 20px;">⚠️</div>
@@ -139,65 +145,52 @@ function generateWallet() {
     }
 
     try {
-        // Get selected network
-        const networkRadio = document.querySelector('input[name="network"]:checked');
-        const isMainnet = networkRadio.value === 'mainnet';
+        currentBundle = wasm.generate_wallet_bundle();
+        displayWallet(currentBundle, getSelectedAssetType());
 
-        // Generate wallet using WASM
-        const wallet = wasm.generate_wallet(isMainnet);
+        showToast(`${getAssetLabel(getSelectedAssetType())} wallet generated successfully!`, 'success');
 
-        // Display wallet
-        displayWallet(wallet);
-
-        // Show success message
-        showToast(`${wallet.network} wallet generated successfully!`, 'success');
-
-        // Scroll to wallet display
         document.getElementById('walletDisplay').scrollIntoView({
             behavior: 'smooth',
-            block: 'nearest'
+            block: 'nearest',
         });
-
     } catch (error) {
         console.error('Failed to generate wallet:', error);
-        showToast('Failed to generate wallet: ' + error.message, 'error');
+        showToast(`Failed to generate wallet: ${error.message}`, 'error');
     }
 }
 
-function displayWallet(wallet) {
+function displayWallet(bundle, assetType) {
+    const wallet = getDisplayedWallet(bundle, assetType);
     const walletDisplay = document.getElementById('walletDisplay');
+    const networkBadge = document.getElementById('networkBadge');
     const addressText = document.getElementById('addressText');
+    const publicKeyText = document.getElementById('publicKeyText');
     const privateKeyText = document.getElementById('privateKeyText');
     const seedWordsContainer = document.getElementById('seedWords');
-    const networkBadge = document.getElementById('networkBadge');
 
-    // Set network badge with translation
-    const currentLang = localStorage.getItem('tos-wallet-language') || 'en';
-    const isMainnet = wallet.network === 'Mainnet';
+    networkBadge.dataset.asset = assetType;
+    networkBadge.textContent = getAssetLabel(assetType);
+    networkBadge.style.background = assetType === 'uno'
+        ? 'linear-gradient(135deg, #8b5cf6, #6d28d9)'
+        : 'linear-gradient(135deg, #10b981, #059669)';
 
-    // Store network type for language switching
-    networkBadge.dataset.network = isMainnet ? 'mainnet' : 'testnet';
-
-    // Get translated network name from i18n
-    if (window.translations && window.translations[currentLang]) {
-        networkBadge.textContent = isMainnet
-            ? window.translations[currentLang]['network.mainnet']
-            : window.translations[currentLang]['network.testnet'];
-    } else {
-        networkBadge.textContent = wallet.network;
-    }
-
-    networkBadge.style.background = isMainnet
-        ? 'linear-gradient(135deg, #ef4444, #dc2626)'
-        : 'linear-gradient(135deg, #3b82f6, #2563eb)';
-
-    // Display address and private key
     addressText.textContent = wallet.address;
+    publicKeyText.textContent = wallet.public_key;
     privateKeyText.textContent = wallet.private_key;
 
-    // Display seed phrase (25 words)
-    const words = wallet.seed_phrase.split(' ');
-    seedWordsContainer.innerHTML = '';
+    renderSeedPhrase(seedWordsContainer, bundle.mnemonic);
+
+    generateQRCode('addressQR', wallet.address);
+    generateQRCode('privateKeyQR', wallet.private_key);
+
+    walletDisplay.classList.remove('hidden');
+}
+
+function renderSeedPhrase(container, mnemonic) {
+    const words = mnemonic.split(' ');
+    container.innerHTML = '';
+
     words.forEach((word, index) => {
         const wordElement = document.createElement('div');
         wordElement.className = 'seed-word';
@@ -205,43 +198,39 @@ function displayWallet(wallet) {
             <span class="seed-word-number">${index + 1}</span>
             <span class="seed-word-text">${word}</span>
         `;
-        seedWordsContainer.appendChild(wordElement);
+        container.appendChild(wordElement);
     });
 
-    // Store seed phrase for copying
-    seedWordsContainer.dataset.seedPhrase = wallet.seed_phrase;
+    container.dataset.seedPhrase = mnemonic;
+}
 
-    // Generate QR codes
-    generateQRCode('addressQR', wallet.address);
-    generateQRCode('privateKeyQR', wallet.private_key);
+function syncDisplayedWallet() {
+    if (!currentBundle) {
+        return;
+    }
 
-    // Show wallet display
-    walletDisplay.classList.remove('hidden');
+    displayWallet(currentBundle, getSelectedAssetType());
 }
 
 // ==================== QR Code Generation ====================
 
-function generateQRCode(canvasId, data) {
-    const canvas = document.getElementById(canvasId);
+function generateQRCode(containerId, data) {
+    const container = document.getElementById(containerId);
 
-    // Access QRCode from global window scope
-    if (!window.QRCode) {
-        console.error('QRCode library not loaded');
+    if (!window.QRCode || !container) {
         return;
     }
 
-    // Clear any existing QR code
-    canvas.innerHTML = '';
+    container.innerHTML = '';
 
-    // Create QR code using the constructor-based API
     try {
-        new window.QRCode(canvas, {
+        new window.QRCode(container, {
             text: data,
             width: 200,
             height: 200,
             colorDark: '#000000',
             colorLight: '#ffffff',
-            correctLevel: window.QRCode.CorrectLevel.M
+            correctLevel: window.QRCode.CorrectLevel.M,
         });
     } catch (error) {
         console.error('QR code generation failed:', error);
@@ -251,74 +240,99 @@ function generateQRCode(canvasId, data) {
 // ==================== Copy to Clipboard ====================
 
 function setupCopyButtons() {
-    document.querySelectorAll('.btn-copy').forEach(btn => {
-        btn.addEventListener('click', () => {
+    document.querySelectorAll('.btn-copy').forEach((btn) => {
+        btn.addEventListener('click', async () => {
             const copyType = btn.dataset.copy;
-            let text;
-
-            if (copyType === 'address') {
-                text = document.getElementById('addressText').textContent;
-            } else if (copyType === 'private-key') {
-                text = document.getElementById('privateKeyText').textContent;
-            } else if (copyType === 'seed') {
-                text = document.getElementById('seedWords').dataset.seedPhrase;
-            }
+            const sourceMap = {
+                address: document.getElementById('addressText')?.textContent,
+                'public-key': document.getElementById('publicKeyText')?.textContent,
+                'private-key': document.getElementById('privateKeyText')?.textContent,
+                seed: document.getElementById('seedWords')?.dataset.seedPhrase,
+            };
+            const text = sourceMap[copyType];
 
             if (!text) {
                 showToast('Nothing to copy', 'error');
                 return;
             }
 
-            // Copy to clipboard
-            navigator.clipboard.writeText(text).then(() => {
-                showToast(copyType === 'seed' ? 'All 25 words copied!' : 'Copied to clipboard!', 'success');
-
-                // Visual feedback
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast(getCopySuccessMessage(copyType), 'success');
                 btn.style.background = 'var(--success)';
                 setTimeout(() => {
                     btn.style.background = '';
                 }, 1000);
-            }).catch(err => {
-                console.error('Failed to copy:', err);
+            } catch (error) {
+                console.error('Failed to copy:', error);
                 showToast('Failed to copy', 'error');
-            });
+            }
         });
     });
+}
+
+function getCopySuccessMessage(copyType) {
+    if (copyType === 'seed') {
+        return translate('copy.seed.success', 'Recovery phrase copied!');
+    }
+    if (copyType === 'public-key') {
+        return translate('copy.public.success', 'Public key copied!');
+    }
+    if (copyType === 'private-key') {
+        return translate('copy.private.success', 'Private key copied!');
+    }
+    return translate('copy.address.success', 'Address copied!');
 }
 
 // ==================== Print Functionality ====================
 
 function setupPrintButton() {
-    document.getElementById('printBtn').addEventListener('click', () => {
-        // Check if wallet is generated
+    const printBtn = document.getElementById('printBtn');
+    if (!printBtn) {
+        return;
+    }
+
+    printBtn.addEventListener('click', () => {
         const walletDisplay = document.getElementById('walletDisplay');
         if (walletDisplay.classList.contains('hidden')) {
             showToast('Please generate a wallet first', 'error');
             return;
         }
-
-        // Print
         window.print();
     });
 }
 
-// ==================== New Wallet Button ====================
+// ==================== Asset Selector ====================
 
-function setupNewWalletButton() {
-    document.getElementById('newWalletBtn').addEventListener('click', () => {
-        const confirmMsg = 'Generate a new wallet? The current wallet will be replaced.';
-
-        if (confirm(confirmMsg)) {
-            generateWallet();
-        }
+function setupAssetSelector() {
+    document.querySelectorAll('input[name="asset"]').forEach((radio) => {
+        radio.addEventListener('change', () => {
+            syncDisplayedWallet();
+        });
     });
 }
 
-// ==================== Generate Button ====================
+// ==================== Buttons ====================
 
 function setupGenerateButton() {
-    document.getElementById('generateBtn').addEventListener('click', () => {
-        generateWallet();
+    document.getElementById('generateBtn').addEventListener('click', generateWallet);
+}
+
+function setupNewWalletButton() {
+    const newWalletBtn = document.getElementById('newWalletBtn');
+    if (!newWalletBtn) {
+        return;
+    }
+
+    newWalletBtn.addEventListener('click', () => {
+        const confirmMessage = translate(
+            'wallet.replace.confirm',
+            'Generate a new wallet bundle? The current wallet material will be replaced.',
+        );
+
+        if (window.confirm(confirmMessage)) {
+            generateWallet();
+        }
     });
 }
 
@@ -326,11 +340,8 @@ function setupGenerateButton() {
 
 function showToast(message, type = 'info') {
     const toast = document.getElementById('toast');
-
-    // Set message
     toast.textContent = message;
 
-    // Set color based on type
     if (type === 'success') {
         toast.style.borderLeft = '4px solid var(--success)';
     } else if (type === 'error') {
@@ -339,10 +350,8 @@ function showToast(message, type = 'info') {
         toast.style.borderLeft = '4px solid var(--accent-primary)';
     }
 
-    // Show toast
     toast.classList.remove('hidden');
 
-    // Auto hide after 3 seconds
     setTimeout(() => {
         toast.classList.add('hidden');
     }, 3000);
@@ -351,43 +360,21 @@ function showToast(message, type = 'info') {
 // ==================== Security Warning ====================
 
 function showSecurityWarning() {
-    // Check if online
     if (navigator.onLine) {
-        console.warn('%c⚠️ SECURITY WARNING', 'color: #f59e0b; font-size: 20px; font-weight: bold;');
-        console.warn('You are ONLINE. For maximum security, disconnect from the internet before generating wallets.');
-        console.warn('Never share your private key with anyone.');
-
-        // Show warning toast
+        console.warn('You are online. For maximum security, disconnect from the internet before generating wallets.');
         setTimeout(() => {
-            showToast('⚠️ You are online! Disconnect for maximum security', 'error');
+            showToast('You are online. Disconnect for maximum security.', 'error');
         }, 1000);
-    } else {
-        console.log('%c✅ OFFLINE MODE', 'color: #10b981; font-size: 20px; font-weight: bold;');
-        console.log('Good! You are offline. This is the safest way to generate wallets.');
     }
 }
 
 // ==================== Keyboard Shortcuts ====================
 
 function setupKeyboardShortcuts() {
-    document.addEventListener('keydown', (e) => {
-        // Ctrl/Cmd + G: Generate wallet
-        if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
-            e.preventDefault();
-            const walletDisplay = document.getElementById('walletDisplay');
-            if (walletDisplay.classList.contains('hidden')) {
-                document.getElementById('generateBtn').click();
-            } else {
-                document.getElementById('newWalletBtn').click();
-            }
-        }
-
-        // Ctrl/Cmd + P: Print wallet
-        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-            const walletDisplay = document.getElementById('walletDisplay');
-            if (!walletDisplay.classList.contains('hidden')) {
-                // Let default print behavior happen
-            }
+    document.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'g') {
+            event.preventDefault();
+            generateWallet();
         }
     });
 }
@@ -395,27 +382,24 @@ function setupKeyboardShortcuts() {
 // ==================== Animation on Scroll ====================
 
 function setupScrollAnimations() {
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    };
-
     const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
+        entries.forEach((entry) => {
             if (entry.isIntersecting) {
                 entry.target.classList.add('animate-in');
             }
         });
-    }, observerOptions);
+    }, {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px',
+    });
 
-    document.querySelectorAll('.controls-card, .wallet-card').forEach(el => {
-        observer.observe(el);
+    document.querySelectorAll('.controls-card, .wallet-card').forEach((element) => {
+        observer.observe(element);
     });
 }
 
 // ==================== Initialization ====================
 
-// Wait for QRCode library to load
 function waitForQRCode() {
     return new Promise((resolve) => {
         if (window.QRCode) {
@@ -430,69 +414,47 @@ function waitForQRCode() {
             }
         }, 50);
 
-        // Timeout after 5 seconds
         setTimeout(() => {
             clearInterval(checkInterval);
-            console.warn('QRCode library load timeout');
             resolve();
         }, 5000);
     });
 }
 
 async function init() {
-    console.log('%cTOS Paper Wallet', 'color: #3b82f6; font-size: 24px; font-weight: bold;');
-    console.log('Initializing...');
-
-    // Initialize theme
     initTheme();
-
-    // Initialize hamburger menu
     initHamburgerMenu();
-
-    // Initialize language selector
     initLanguageSelector();
-
-    // Show security warning
     showSecurityWarning();
 
-    // Wait for QRCode library
     await waitForQRCode();
-    if (window.QRCode) {
-        console.log('✅ QRCode library loaded');
-    }
-
-    // Initialize WASM
     const wasmLoaded = await initWasm();
 
-    if (wasmLoaded) {
-        // Setup event listeners
-        setupGenerateButton();
-        setupCopyButtons();
-        setupPrintButton();
-        setupNewWalletButton();
-        setupKeyboardShortcuts();
-        setupScrollAnimations();
-
-        console.log('✅ Application initialized successfully');
-        console.log('Keyboard shortcuts:');
-        console.log('  Ctrl/Cmd + G: Generate wallet');
-        console.log('  Ctrl/Cmd + P: Print wallet');
+    if (!wasmLoaded) {
+        return;
     }
+
+    setupAssetSelector();
+    setupGenerateButton();
+    setupCopyButtons();
+    setupPrintButton();
+    setupNewWalletButton();
+    setupKeyboardShortcuts();
+    setupScrollAnimations();
 }
 
-// Start application when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
     init();
 }
 
-// Prevent accidental page unload if wallet is displayed
-window.addEventListener('beforeunload', (e) => {
+window.addEventListener('beforeunload', (event) => {
     const walletDisplay = document.getElementById('walletDisplay');
     if (!walletDisplay.classList.contains('hidden')) {
-        e.preventDefault();
-        e.returnValue = '';
+        event.preventDefault();
+        event.returnValue = '';
         return '';
     }
+    return undefined;
 });

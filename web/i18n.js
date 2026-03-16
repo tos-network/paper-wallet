@@ -5,15 +5,14 @@ window.translations = window.translations || {};
 const translations = {
   en: {
     // Header
-    'app.title': 'TOS Paper Wallet',
-    'app.subtitle': 'Generate secure offline wallets for TOS Network',
+    'app.title': 'TOS Wallet',
+    'app.subtitle': 'Generate offline TOS and UNO wallet material from one recovery phrase',
 
-    // Network Selection
-    'network.label': 'Select Network',
-    'network.mainnet': 'Mainnet',
-    'network.testnet': 'Testnet',
-    'network.mainnet.desc': 'Real TOS network',
-    'network.testnet.desc': 'For testing purposes',
+    // Asset Selection
+    'asset.tos': 'TOS',
+    'asset.uno': 'UNO',
+    'asset.tos.desc': 'Normal TOS Assets',
+    'asset.uno.desc': 'Secret UNO Assets',
 
     // Themes
     'theme.label': 'Theme',
@@ -28,17 +27,24 @@ const translations = {
     'action.print': 'Print Wallet',
 
     // Wallet Sections
+    'wallet.header.materials': 'Your Wallet Material',
     'wallet.address.title': 'Public Address',
-    'wallet.address.desc': 'Share this to RECEIVE TOS',
+    'wallet.address.generic_desc': 'Share this address to receive assets',
+    'wallet.publickey.title': 'Public Key',
+    'wallet.publickey.desc': 'Signer public key derived from the selected wallet mode',
     'wallet.privatekey.title': 'Private Key',
-    'wallet.privatekey.desc': 'NEVER share this! Required to spend funds',
-    'wallet.seed.title': 'Seed Phrase (25 Words)',
-    'wallet.seed.desc': 'Write this down! Can restore your wallet',
+    'wallet.privatekey.generic_desc': 'Never share this key. It controls the selected wallet.',
+    'wallet.seed24.title': 'Recovery Phrase (24 Words)',
+    'wallet.seed24.desc': 'Write this down once. It derives both TOS and UNO wallet material.',
 
     // Copy Actions
     'copy.button': 'Copy',
     'copy.words': 'Copy All Words',
     'copy.success': 'Copied!',
+    'copy.address.success': 'Address copied!',
+    'copy.public.success': 'Public key copied!',
+    'copy.private.success': 'Private key copied!',
+    'copy.seed.success': 'Recovery phrase copied!',
 
     // Security Warning
     'warning.security.title': 'Security First',
@@ -54,25 +60,22 @@ const translations = {
     // Loading
     'loading.text': 'Loading cryptographic module...',
 
-    // Wallet Header
-    'wallet.header': 'Your Paper Wallet',
-
     // Language
     'lang.name': '🇺🇸 English',
-    'lang.label': 'Language'
+    'lang.label': 'Language',
+    'wallet.replace.confirm': 'Generate a new wallet bundle? The current wallet material will be replaced.'
   },
 
   zh: {
     // Header
-    'app.title': 'TOS 纸钱包',
-    'app.subtitle': '为 TOS 网络生成安全的离线钱包',
+    'app.title': 'TOS 钱包',
+    'app.subtitle': '用一套恢复短语离线生成 TOS 与 UNO 钱包资料',
 
-    // Network Selection
-    'network.label': '选择网络',
-    'network.mainnet': '主网',
-    'network.testnet': '测试网',
-    'network.mainnet.desc': '真实的 TOS 网络',
-    'network.testnet.desc': '用于测试目的',
+    // Asset Selection
+    'asset.tos': 'TOS',
+    'asset.uno': 'UNO',
+    'asset.tos.desc': 'Normal TOS Assets',
+    'asset.uno.desc': 'Secret UNO Assets',
 
     // Themes
     'theme.label': '主题',
@@ -87,17 +90,24 @@ const translations = {
     'action.print': '打印钱包',
 
     // Wallet Sections
+    'wallet.header.materials': '钱包资料',
     'wallet.address.title': '公开地址',
-    'wallet.address.desc': '分享此地址以接收 TOS',
+    'wallet.address.generic_desc': '分享这个地址即可接收资产',
+    'wallet.publickey.title': '公钥',
+    'wallet.publickey.desc': '当前钱包模式对应的签名公钥',
     'wallet.privatekey.title': '私钥',
-    'wallet.privatekey.desc': '永远不要分享！花费资金时需要',
-    'wallet.seed.title': '助记词（25个单词）',
-    'wallet.seed.desc': '写下来！可以恢复您的钱包',
+    'wallet.privatekey.generic_desc': '不要分享这个私钥。它控制当前钱包。',
+    'wallet.seed24.title': '恢复短语（24个单词）',
+    'wallet.seed24.desc': '只需记录这一套恢复短语。它会同时派生 TOS 和 UNO 钱包资料。',
 
     // Copy Actions
     'copy.button': '复制',
     'copy.words': '复制所有单词',
     'copy.success': '已复制！',
+    'copy.address.success': '地址已复制！',
+    'copy.public.success': '公钥已复制！',
+    'copy.private.success': '私钥已复制！',
+    'copy.seed.success': '恢复短语已复制！',
 
     // Security Warning
     'warning.security.title': '安全第一',
@@ -113,12 +123,10 @@ const translations = {
     // Loading
     'loading.text': '正在加载加密模块...',
 
-    // Wallet Header
-    'wallet.header': '您的纸钱包',
-
     // Language
     'lang.name': '🇨🇳 中文',
-    'lang.label': '语言'
+    'lang.label': '语言',
+    'wallet.replace.confirm': '要生成新的钱包资料吗？当前显示的资料会被替换。'
   },
 
   ja: {
@@ -1133,11 +1141,11 @@ function updatePageLanguage(lang) {
   };
   document.documentElement.lang = langMap[lang] || 'en';
 
-  // Update network badge if wallet is displayed
+  // Update asset badge if wallet is displayed
   const networkBadge = document.getElementById('networkBadge');
-  if (networkBadge && networkBadge.dataset.network) {
-    const networkType = networkBadge.dataset.network;
-    const translationKey = networkType === 'mainnet' ? 'network.mainnet' : 'network.testnet';
+  if (networkBadge && networkBadge.dataset.asset) {
+    const assetType = networkBadge.dataset.asset;
+    const translationKey = assetType === 'uno' ? 'asset.uno' : 'asset.tos';
     if (translations[lang] && translations[lang][translationKey]) {
       networkBadge.textContent = translations[lang][translationKey];
     }
