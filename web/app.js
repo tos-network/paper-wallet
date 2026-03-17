@@ -27,6 +27,10 @@ function getDisplayedWallet(bundle, assetType) {
     return assetType === 'uno' ? bundle.uno : bundle.tos;
 }
 
+function syncWalletLayoutState() {
+    document.body.classList.toggle('wallet-material-visible', Boolean(currentBundle));
+}
+
 function setPrimaryGenerateButtonDisabled(disabled) {
     const button = document.getElementById('generateBtn');
     if (!button) {
@@ -291,6 +295,7 @@ function displayWallet(bundle, assetType) {
     renderSensitiveSections();
 
     walletDisplay.classList.remove('hidden');
+    syncWalletLayoutState();
 }
 
 function renderSensitiveSections() {
@@ -729,6 +734,7 @@ async function init() {
     setupKeyboardShortcuts();
     setupScrollAnimations();
     renderSensitiveSections();
+    syncWalletLayoutState();
 }
 
 window.refreshWalletLanguage = function refreshWalletLanguage() {

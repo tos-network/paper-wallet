@@ -1480,6 +1480,9 @@ button:focus-visible,
     .menu-content {
         top: auto;
         bottom: 54px;
+        max-height: min(320px, calc(100vh - 140px - env(safe-area-inset-bottom)));
+        overflow-y: auto;
+        transform-origin: bottom right;
     }
 
     .theme-btn {
@@ -1501,6 +1504,16 @@ button:focus-visible,
         top: calc(12px + env(safe-area-inset-top));
         z-index: 20;
         backdrop-filter: blur(16px);
+    }
+
+    body.wallet-material-visible .controls-card {
+        position: static;
+        top: auto;
+        z-index: auto;
+    }
+
+    #walletDisplay {
+        scroll-margin-top: 16px;
     }
 
     /* Footer responsive layout on mobile */
@@ -1607,7 +1620,8 @@ button:focus-visible,
     }
 
     .menu-content {
-        top: 50px;
+        top: auto;
+        bottom: 50px;
     }
 
     .theme-btn {
