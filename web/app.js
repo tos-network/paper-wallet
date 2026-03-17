@@ -98,6 +98,21 @@ function buildLoadError(overlay, message) {
     overlay.appendChild(wrapper);
 }
 
+function renderBuildInfo() {
+    const row = document.getElementById('buildInfoRow');
+    const hash = document.getElementById('buildInfoHash');
+    const buildInfo = window.buildInfo;
+
+    if (!row || !hash || !buildInfo?.shortCommitHash) {
+        row?.classList.add('hidden');
+        return;
+    }
+
+    hash.textContent = buildInfo.shortCommitHash;
+    hash.title = buildInfo.commitHash || buildInfo.shortCommitHash;
+    row.classList.remove('hidden');
+}
+
 // ==================== Theme Management ====================
 
 function initTheme() {
@@ -696,6 +711,7 @@ async function init() {
     initTheme();
     initHamburgerMenu();
     initLanguageSelector();
+    renderBuildInfo();
     updateAssetPresentation(getSelectedAssetType());
     showSecurityWarning();
 

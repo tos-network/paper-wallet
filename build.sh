@@ -14,6 +14,14 @@ if ! command -v wasm-bindgen &> /dev/null; then
     exit 1
 fi
 
+COMMIT_HASH=$(git rev-parse HEAD)
+SHORT_COMMIT_HASH=$(git rev-parse --short HEAD)
+
+echo "🧾 Writing build metadata..."
+printf "window.buildInfo = {\n  commitHash: '%s',\n  shortCommitHash: '%s'\n};\n" \
+  "$COMMIT_HASH" \
+  "$SHORT_COMMIT_HASH" > web/build-info.js
+
 # Build WASM module
 echo "🔨 Building WASM module..."
 cargo build --target wasm32-unknown-unknown --release

@@ -1099,6 +1099,31 @@ button:focus-visible,
     margin-top: 12px;
 }
 
+.footer-build {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.footer-build-label {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.footer-build-hash {
+    color: var(--text-secondary);
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', 'Courier New', 'Consolas', monospace;
+    font-size: 0.82rem;
+    background: color-mix(in srgb, var(--mode-accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--mode-accent) 24%, transparent);
+    border-radius: 999px;
+    padding: 5px 10px;
+}
+
 /* ==================== Loading Overlay ==================== */
 
 .loading-overlay {

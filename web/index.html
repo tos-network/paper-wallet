@@ -375,6 +375,10 @@
                     </svg>
                     <span data-i18n="footer.security">Always verify the source code and run offline for maximum security</span>
                 </p>
+                <p id="buildInfoRow" class="footer-build hidden">
+                    <span class="footer-build-label">Commit</span>
+                    <code id="buildInfoHash" class="footer-build-hash">unknown</code>
+                </p>
             </div>
         </footer>
     </div>
@@ -390,6 +394,7 @@
 
     <script src="qrcode.min.js"></script>
     <script src="i18n.js"></script>
+    <script src="build-info.js"></script>
     <script type="module" src="app.js"></script>
 </body>
 </html>
