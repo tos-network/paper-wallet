@@ -3,6 +3,14 @@
 let wasm = null;
 let currentBundle = null;
 
+const uiState = {
+    asset: 'tos',
+    secrets: {
+        privateKey: false,
+        seedPhrase: false,
+    },
+};
+
 function getCurrentLanguage() {
     return localStorage.getItem('tos-wallet-language') || 'en';
 }
@@ -15,14 +23,75 @@ function getSelectedAssetType() {
     return document.querySelector('input[name="asset"]:checked')?.value || 'tos';
 }
 
-function getAssetLabel(assetType) {
-    return assetType === 'uno'
-        ? translate('asset.uno', 'UNO')
-        : translate('asset.tos', 'TOS');
-}
-
 function getDisplayedWallet(bundle, assetType) {
     return assetType === 'uno' ? bundle.uno : bundle.tos;
+}
+
+function setPrimaryGenerateButtonDisabled(disabled) {
+    const button = document.getElementById('generateBtn');
+    if (!button) {
+        return;
+    }
+
+    button.disabled = disabled;
+    button.setAttribute('aria-disabled', String(disabled));
+}
+
+function isPrimaryGenerateButtonDisabled() {
+    const button = document.getElementById('generateBtn');
+    return Boolean(button?.disabled);
+}
+
+function getAssetMeta(assetType) {
+    if (assetType === 'uno') {
+        return {
+            label: translate('asset.uno', 'UNO'),
+            description: translate('asset.uno.desc', 'Secret UNO Assets'),
+            accent: 'uno',
+        };
+    }
+
+    return {
+        label: translate('asset.tos', 'TOS'),
+        description: translate('asset.tos.desc', 'Normal TOS Assets'),
+        accent: 'tos',
+    };
+}
+
+function clearElement(element) {
+    while (element.firstChild) {
+        element.removeChild(element.firstChild);
+    }
+}
+
+function buildLoadError(overlay, message) {
+    clearElement(overlay);
+
+    const wrapper = document.createElement('div');
+    wrapper.style.textAlign = 'center';
+    wrapper.style.padding = '40px';
+
+    const icon = document.createElement('div');
+    icon.style.fontSize = '3rem';
+    icon.style.marginBottom = '20px';
+    icon.textContent = '⚠️';
+
+    const title = document.createElement('h2');
+    title.style.marginBottom = '15px';
+    title.textContent = 'Failed to Load WASM Module';
+
+    const detail = document.createElement('p');
+    detail.style.color = 'var(--text-secondary)';
+    detail.style.marginBottom = '20px';
+    detail.textContent = message;
+
+    const hint = document.createElement('p');
+    hint.style.color = 'var(--text-muted)';
+    hint.style.fontSize = '0.9rem';
+    hint.textContent = 'Please make sure the WASM files are built and available in the pkg/ directory.';
+
+    wrapper.append(icon, title, detail, hint);
+    overlay.appendChild(wrapper);
 }
 
 // ==================== Theme Management ====================
@@ -62,18 +131,24 @@ function initHamburgerMenu() {
 
     hamburgerBtn.addEventListener('click', (event) => {
         event.stopPropagation();
+        const expanded = !menuContent.classList.contains('active');
         menuContent.classList.toggle('active');
+        hamburgerBtn.setAttribute('aria-expanded', String(expanded));
     });
 
     document.addEventListener('click', (event) => {
         if (!menuContent.contains(event.target) && event.target !== hamburgerBtn) {
             menuContent.classList.remove('active');
+            hamburgerBtn.setAttribute('aria-expanded', 'false');
         }
     });
 
     document.querySelectorAll('.theme-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
-            setTimeout(() => menuContent.classList.remove('active'), 200);
+            setTimeout(() => {
+                menuContent.classList.remove('active');
+                hamburgerBtn.setAttribute('aria-expanded', 'false');
+            }, 200);
         });
     });
 }
@@ -90,17 +165,23 @@ function initLanguageSelector() {
 
     langBtn.addEventListener('click', (event) => {
         event.stopPropagation();
+        const expanded = !langDropdown.classList.contains('show');
         langDropdown.classList.toggle('show');
+        langBtn.setAttribute('aria-expanded', String(expanded));
     });
 
     document.addEventListener('click', (event) => {
         if (!langDropdown.contains(event.target) && event.target !== langBtn) {
             langDropdown.classList.remove('show');
+            langBtn.setAttribute('aria-expanded', 'false');
         }
     });
 
     langDropdown.addEventListener('click', () => {
-        setTimeout(() => langDropdown.classList.remove('show'), 200);
+        setTimeout(() => {
+            langDropdown.classList.remove('show');
+            langBtn.setAttribute('aria-expanded', 'false');
+        }, 200);
     });
 }
 
@@ -120,41 +201,70 @@ async function initWasm() {
         return true;
     } catch (error) {
         console.error('Failed to load WASM module:', error);
-        overlay.innerHTML = `
-            <div style="text-align: center; padding: 40px;">
-                <div style="font-size: 3rem; margin-bottom: 20px;">⚠️</div>
-                <h2 style="margin-bottom: 15px;">Failed to Load WASM Module</h2>
-                <p style="color: var(--text-secondary); margin-bottom: 20px;">
-                    ${error.message}
-                </p>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">
-                    Please make sure the WASM files are built and available in the pkg/ directory.
-                </p>
-            </div>
-        `;
+        buildLoadError(overlay, error.message);
         return false;
     }
 }
 
-// ==================== Wallet Generation ====================
+// ==================== Wallet Rendering ====================
 
-function generateWallet() {
+function updateAssetPresentation(assetType) {
+    uiState.asset = assetType;
+    document.body.dataset.asset = assetType;
+
+    const generateBtnLabel = document.querySelector('#generateBtn span');
+    if (generateBtnLabel) {
+        generateBtnLabel.textContent = translate('action.generate', 'Generate New Wallet');
+    }
+}
+
+function resetSecretVisibility() {
+    uiState.secrets.privateKey = false;
+    uiState.secrets.seedPhrase = false;
+}
+
+function hideSensitiveData() {
+    resetSecretVisibility();
+    renderSensitiveSections();
+}
+
+function generateWallet(options = {}) {
+    const { allowReplace = false } = options;
+
     if (!wasm) {
         showToast('WASM module not loaded yet', 'error');
         return;
     }
 
+    const hadWalletBundle = Boolean(currentBundle);
+    const wasPrimaryDisabled = isPrimaryGenerateButtonDisabled();
+
+    if (hadWalletBundle && !allowReplace) {
+        showToast(
+            translate(
+                'wallet.replace.use_secondary',
+                'Use the lower Generate New Wallet button to confirm replacing the current wallet.',
+            ),
+            'info',
+        );
+        return;
+    }
+
     try {
+        setPrimaryGenerateButtonDisabled(true);
         currentBundle = wasm.generate_wallet_bundle();
+        resetSecretVisibility();
         displayWallet(currentBundle, getSelectedAssetType());
 
-        showToast(`${getAssetLabel(getSelectedAssetType())} wallet generated successfully!`, 'success');
+        const assetMeta = getAssetMeta(getSelectedAssetType());
+        showToast(`${assetMeta.label} wallet generated successfully.`, 'success');
 
         document.getElementById('walletDisplay').scrollIntoView({
             behavior: 'smooth',
-            block: 'nearest',
+            block: 'start',
         });
     } catch (error) {
+        setPrimaryGenerateButtonDisabled(wasPrimaryDisabled);
         console.error('Failed to generate wallet:', error);
         showToast(`Failed to generate wallet: ${error.message}`, 'error');
     }
@@ -162,54 +272,146 @@ function generateWallet() {
 
 function displayWallet(bundle, assetType) {
     const wallet = getDisplayedWallet(bundle, assetType);
+    const assetMeta = getAssetMeta(assetType);
     const walletDisplay = document.getElementById('walletDisplay');
     const networkBadge = document.getElementById('networkBadge');
-    const addressText = document.getElementById('addressText');
-    const publicKeyText = document.getElementById('publicKeyText');
-    const privateKeyText = document.getElementById('privateKeyText');
-    const seedWordsContainer = document.getElementById('seedWords');
+    const walletTitle = document.getElementById('walletTitle');
+    const modeDescription = document.getElementById('modeDescription');
 
+    walletDisplay.dataset.asset = assetType;
     networkBadge.dataset.asset = assetType;
-    networkBadge.textContent = getAssetLabel(assetType);
-    networkBadge.style.background = assetType === 'uno'
-        ? 'linear-gradient(135deg, #8b5cf6, #6d28d9)'
-        : 'linear-gradient(135deg, #10b981, #059669)';
+    networkBadge.textContent = assetMeta.label;
+    walletTitle.textContent = translate('wallet.header.materials', 'Your Wallet Material');
+    modeDescription.textContent = assetMeta.description;
 
-    addressText.textContent = wallet.address;
-    publicKeyText.textContent = wallet.public_key;
-    privateKeyText.textContent = wallet.private_key;
-
-    renderSeedPhrase(seedWordsContainer, bundle.mnemonic);
+    document.getElementById('addressText').textContent = wallet.address;
+    document.getElementById('publicKeyText').textContent = wallet.public_key;
 
     generateQRCode('addressQR', wallet.address);
-    generateQRCode('privateKeyQR', wallet.private_key);
+    renderSensitiveSections();
 
     walletDisplay.classList.remove('hidden');
 }
 
-function renderSeedPhrase(container, mnemonic) {
-    const words = mnemonic.split(' ');
-    container.innerHTML = '';
-
-    words.forEach((word, index) => {
-        const wordElement = document.createElement('div');
-        wordElement.className = 'seed-word';
-        wordElement.innerHTML = `
-            <span class="seed-word-number">${index + 1}</span>
-            <span class="seed-word-text">${word}</span>
-        `;
-        container.appendChild(wordElement);
-    });
-
-    container.dataset.seedPhrase = mnemonic;
+function renderSensitiveSections() {
+    renderPrivateKeySection();
+    renderSeedPhraseSection();
 }
 
-function syncDisplayedWallet() {
+function renderPrivateKeySection() {
+    const hiddenPanel = document.getElementById('privateKeyHidden');
+    const visiblePanel = document.getElementById('privateKeyVisible');
+    const hint = document.getElementById('privateKeyHint');
+    const toggleBtn = document.getElementById('togglePrivateKeyBtn');
+    const privateKeyText = document.getElementById('privateKeyText');
+    const qrContainer = document.getElementById('privateKeyQR');
+
+    if (!currentBundle) {
+        hiddenPanel.classList.remove('hidden');
+        visiblePanel.classList.add('hidden');
+        toggleBtn.disabled = true;
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        privateKeyText.textContent = '';
+        clearElement(qrContainer);
+        return;
+    }
+
+    const wallet = getDisplayedWallet(currentBundle, getSelectedAssetType());
+    const isVisible = uiState.secrets.privateKey;
+
+    toggleBtn.disabled = false;
+    toggleBtn.setAttribute('aria-expanded', String(isVisible));
+    toggleBtn.querySelector('span').textContent = isVisible
+        ? translate('action.hide_private', 'Hide Private Key')
+        : translate('action.reveal_private', 'Reveal Private Key');
+
+    hint.textContent = isVisible
+        ? translate('secret.private.visible', 'Visible on screen. Hide it again before leaving this device unattended.')
+        : translate('secret.private.hidden', 'Hidden by default. Reveal only when you are ready to back up or migrate this wallet.');
+
+    hiddenPanel.classList.toggle('hidden', isVisible);
+    visiblePanel.classList.toggle('hidden', !isVisible);
+
+    if (isVisible) {
+        privateKeyText.textContent = wallet.private_key;
+        generateQRCode('privateKeyQR', wallet.private_key);
+    } else {
+        privateKeyText.textContent = '';
+        clearElement(qrContainer);
+    }
+}
+
+function renderSeedPhraseSection() {
+    const hiddenPanel = document.getElementById('seedPhraseHidden');
+    const visiblePanel = document.getElementById('seedPhraseVisible');
+    const hint = document.getElementById('seedPhraseHint');
+    const toggleBtn = document.getElementById('toggleSeedPhraseBtn');
+    const seedWords = document.getElementById('seedWords');
+
+    if (!currentBundle) {
+        hiddenPanel.classList.remove('hidden');
+        visiblePanel.classList.add('hidden');
+        toggleBtn.disabled = true;
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        clearElement(seedWords);
+        return;
+    }
+
+    const isVisible = uiState.secrets.seedPhrase;
+
+    toggleBtn.disabled = false;
+    toggleBtn.setAttribute('aria-expanded', String(isVisible));
+    toggleBtn.querySelector('span').textContent = isVisible
+        ? translate('action.hide_seed', 'Hide Recovery Phrase')
+        : translate('action.reveal_seed', 'Reveal Recovery Phrase');
+
+    hint.textContent = isVisible
+        ? translate('secret.seed.visible', 'Visible on screen. Make sure no camera or screen recording is active.')
+        : translate('secret.seed.hidden', 'Hidden by default. Reveal only in a trusted offline environment.');
+
+    hiddenPanel.classList.toggle('hidden', isVisible);
+    visiblePanel.classList.toggle('hidden', !isVisible);
+
+    if (isVisible) {
+        renderSeedPhrase(seedWords, currentBundle.mnemonic);
+    } else {
+        clearElement(seedWords);
+    }
+}
+
+function renderSeedPhrase(container, mnemonic) {
+    clearElement(container);
+
+    mnemonic.split(' ').forEach((word, index) => {
+        const wordElement = document.createElement('div');
+        wordElement.className = 'seed-word';
+
+        const number = document.createElement('span');
+        number.className = 'seed-word-number';
+        number.textContent = String(index + 1);
+
+        const text = document.createElement('span');
+        text.className = 'seed-word-text';
+        text.textContent = word;
+
+        wordElement.append(number, text);
+        container.appendChild(wordElement);
+    });
+}
+
+function syncDisplayedWallet(resetSecrets = true) {
+    const assetType = getSelectedAssetType();
+    updateAssetPresentation(assetType);
+
+    if (resetSecrets) {
+        hideSensitiveData();
+    }
+
     if (!currentBundle) {
         return;
     }
 
-    displayWallet(currentBundle, getSelectedAssetType());
+    displayWallet(currentBundle, assetType);
 }
 
 // ==================== QR Code Generation ====================
@@ -221,7 +423,7 @@ function generateQRCode(containerId, data) {
         return;
     }
 
-    container.innerHTML = '';
+    clearElement(container);
 
     try {
         new window.QRCode(container, {
@@ -239,20 +441,38 @@ function generateQRCode(containerId, data) {
 
 // ==================== Copy to Clipboard ====================
 
+function getCopyValue(copyType) {
+    if (!currentBundle) {
+        return null;
+    }
+
+    const wallet = getDisplayedWallet(currentBundle, getSelectedAssetType());
+
+    switch (copyType) {
+        case 'address':
+            return wallet.address;
+        case 'public-key':
+            return wallet.public_key;
+        case 'private-key':
+            return uiState.secrets.privateKey ? wallet.private_key : null;
+        case 'seed':
+            return uiState.secrets.seedPhrase ? currentBundle.mnemonic : null;
+        default:
+            return null;
+    }
+}
+
 function setupCopyButtons() {
     document.querySelectorAll('.btn-copy').forEach((btn) => {
         btn.addEventListener('click', async () => {
             const copyType = btn.dataset.copy;
-            const sourceMap = {
-                address: document.getElementById('addressText')?.textContent,
-                'public-key': document.getElementById('publicKeyText')?.textContent,
-                'private-key': document.getElementById('privateKeyText')?.textContent,
-                seed: document.getElementById('seedWords')?.dataset.seedPhrase,
-            };
-            const text = sourceMap[copyType];
+            const text = getCopyValue(copyType);
 
             if (!text) {
-                showToast('Nothing to copy', 'error');
+                showToast(
+                    translate('secret.copy.blocked', 'Reveal sensitive material before copying it.'),
+                    'error',
+                );
                 return;
             }
 
@@ -273,15 +493,59 @@ function setupCopyButtons() {
 
 function getCopySuccessMessage(copyType) {
     if (copyType === 'seed') {
-        return translate('copy.seed.success', 'Recovery phrase copied!');
+        return translate('copy.seed.success', 'Recovery phrase copied. Clear your clipboard after use.');
     }
     if (copyType === 'public-key') {
-        return translate('copy.public.success', 'Public key copied!');
+        return translate('copy.public.success', 'Public key copied.');
     }
     if (copyType === 'private-key') {
-        return translate('copy.private.success', 'Private key copied!');
+        return translate('copy.private.success', 'Private key copied. Clear your clipboard after use.');
     }
-    return translate('copy.address.success', 'Address copied!');
+    return translate('copy.address.success', 'Address copied.');
+}
+
+// ==================== Sensitive Controls ====================
+
+function togglePrivateKey() {
+    if (!currentBundle) {
+        return;
+    }
+
+    if (!uiState.secrets.privateKey) {
+        const confirmed = window.confirm(
+            translate('secret.confirm.private', 'Revealing the private key will expose it on screen. Continue?'),
+        );
+        if (!confirmed) {
+            return;
+        }
+    }
+
+    uiState.secrets.privateKey = !uiState.secrets.privateKey;
+    renderPrivateKeySection();
+}
+
+function toggleSeedPhrase() {
+    if (!currentBundle) {
+        return;
+    }
+
+    if (!uiState.secrets.seedPhrase) {
+        const confirmed = window.confirm(
+            translate('secret.confirm.seed', 'Revealing the recovery phrase will expose it on screen. Continue?'),
+        );
+        if (!confirmed) {
+            return;
+        }
+    }
+
+    uiState.secrets.seedPhrase = !uiState.secrets.seedPhrase;
+    renderSeedPhraseSection();
+}
+
+function setupSecretControls() {
+    document.getElementById('togglePrivateKeyBtn').addEventListener('click', togglePrivateKey);
+    document.getElementById('toggleSeedPhraseBtn').addEventListener('click', toggleSeedPhrase);
+    document.getElementById('hideSecretsBtn').addEventListener('click', hideSensitiveData);
 }
 
 // ==================== Print Functionality ====================
@@ -298,21 +562,34 @@ function setupPrintButton() {
             showToast('Please generate a wallet first', 'error');
             return;
         }
+
+        const hiddenSecrets = !uiState.secrets.privateKey || !uiState.secrets.seedPhrase;
+        if (hiddenSecrets) {
+            const confirmed = window.confirm(
+                translate(
+                    'print.partial.confirm',
+                    'Sensitive sections are still hidden and will not be included in the printed backup. Continue with the visible view only?',
+                ),
+            );
+
+            if (!confirmed) {
+                return;
+            }
+        }
+
         window.print();
     });
 }
 
-// ==================== Asset Selector ====================
+// ==================== Buttons ====================
 
 function setupAssetSelector() {
     document.querySelectorAll('input[name="asset"]').forEach((radio) => {
         radio.addEventListener('change', () => {
-            syncDisplayedWallet();
+            syncDisplayedWallet(true);
         });
     });
 }
-
-// ==================== Buttons ====================
 
 function setupGenerateButton() {
     document.getElementById('generateBtn').addEventListener('click', generateWallet);
@@ -331,7 +608,7 @@ function setupNewWalletButton() {
         );
 
         if (window.confirm(confirmMessage)) {
-            generateWallet();
+            generateWallet({ allowReplace: true });
         }
     });
 }
@@ -354,7 +631,7 @@ function showToast(message, type = 'info') {
 
     setTimeout(() => {
         toast.classList.add('hidden');
-    }, 3000);
+    }, 3200);
 }
 
 // ==================== Security Warning ====================
@@ -363,7 +640,10 @@ function showSecurityWarning() {
     if (navigator.onLine) {
         console.warn('You are online. For maximum security, disconnect from the internet before generating wallets.');
         setTimeout(() => {
-            showToast('You are online. Disconnect for maximum security.', 'error');
+            showToast(
+                translate('warning.online', 'You are online. Disconnect for maximum security.'),
+                'error',
+            );
         }, 1000);
     }
 }
@@ -375,6 +655,10 @@ function setupKeyboardShortcuts() {
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'g') {
             event.preventDefault();
             generateWallet();
+        }
+
+        if (event.key === 'Escape') {
+            hideSensitiveData();
         }
     });
 }
@@ -425,6 +709,7 @@ async function init() {
     initTheme();
     initHamburgerMenu();
     initLanguageSelector();
+    updateAssetPresentation(getSelectedAssetType());
     showSecurityWarning();
 
     await waitForQRCode();
@@ -434,14 +719,26 @@ async function init() {
         return;
     }
 
+    setPrimaryGenerateButtonDisabled(false);
     setupAssetSelector();
     setupGenerateButton();
     setupCopyButtons();
+    setupSecretControls();
     setupPrintButton();
     setupNewWalletButton();
     setupKeyboardShortcuts();
     setupScrollAnimations();
+    renderSensitiveSections();
 }
+
+window.refreshWalletLanguage = function refreshWalletLanguage() {
+    updateAssetPresentation(getSelectedAssetType());
+    if (currentBundle) {
+        displayWallet(currentBundle, getSelectedAssetType());
+    } else {
+        renderSensitiveSections();
+    }
+};
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
@@ -451,7 +748,7 @@ if (document.readyState === 'loading') {
 
 window.addEventListener('beforeunload', (event) => {
     const walletDisplay = document.getElementById('walletDisplay');
-    if (!walletDisplay.classList.contains('hidden')) {
+    if (walletDisplay && !walletDisplay.classList.contains('hidden')) {
         event.preventDefault();
         event.returnValue = '';
         return '';
