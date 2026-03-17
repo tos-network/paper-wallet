@@ -1,218 +1,196 @@
-# TOS Paper Wallet Generator
+# TOS Wallet Material Generator
 
-Offline-first wallet generator for the TOS Network. Built in Rust, compiled to WebAssembly, and wrapped in a static web UI that can be served locally or from any static host.
+Offline-first web wallet material generator for TOS Network.
 
-**🌐 Live Version: [https://paperwallet.tos.network/](https://paperwallet.tos.network/)**
+This repository builds a static WebAssembly web app that derives one shared 24-word BIP39 recovery phrase and shows two wallet bundles:
 
----
+- `TOS` plain wallet
+  - signer type: `secp256k1`
+  - outputs: `address`, `public key`, `private key`
+- `UNO` privacy wallet
+  - signer type: `elgamal`
+  - outputs: `address`, `public key`, `private key`
 
-## Highlights
-- **Deterministic parity** with the official [`tos`](../tos) wallet: identical key, address, and mnemonic derivation using the TOS signature generator point `H`.
-- **Air-gap friendly**: no third-party fonts, scripts, or analytics; all assets are local under `web/`.
-- **Feature-rich UI**: five themes, 18 languages, live QR codes, copy helpers, print-ready layout.
-- **Security focused**: comprehensive regression testing with 2 real wallet test vectors.
+The UI is designed to run from local static files served over HTTP and can also be deployed to Cloudflare using the included worker configuration.
 
----
+## Current Product Shape
+
+- One `Wallet Mode` selector on the main page: `TOS` or `UNO`
+- One top `Generate New Wallet` button for the first generation
+- One lower confirmed `Generate New Wallet` button for replacing an existing bundle
+- Shared `Recovery Phrase (24 Words)` for both wallet modes
+- Sensitive sections are hidden by default and must be explicitly revealed
+- Local-only assets: no third-party fonts, scripts, or analytics
+- Mobile and desktop layouts supported
+- 18 UI languages and 5 themes
+
+## Derivation Model
+
+### TOS
+
+- BIP39 mnemonic: `24` English words
+- Seed: standard BIP39 seed with empty passphrase
+- HD path: `m/44'/60'/0'/0/0`
+- Private key derivation: BIP32 / secp256k1-compatible scalar derivation
+- Public key: secp256k1 public key
+- Address: mixed-case checksum hex string derived from the full `Keccak256(pubkey[1..])` 32-byte digest
+
+### UNO
+
+- Uses the same BIP39 seed and the same displayed HD path string
+- Private key derivation: `HMAC-SHA512("GTOS_ELGAMAL_DERIVE", seed || 0x00 || hd_path || counter)`
+- Public key: derived ElGamal / Ristretto public key
+- Address: mixed-case checksum hex string derived from `Keccak256(public_key)`
+
+### Cross-Verification
+
+The Rust/WASM derivation is cross-checked against the local GTOS Go implementation with the helper in [tools/verify/README.md](/Users/tomisetsu/paper-wallet/tools/verify/README.md).
 
 ## Project Layout
-```
+
+```text
 paper-wallet/
-├─ build.sh                 # helper script to build WASM + bindings
-├─ wrangler.toml            # Cloudflare Workers configuration (static assets in ./web)
+├─ build.sh
+├─ worker.js
+├─ wrangler.toml
 ├─ src/
-│  ├─ lib.rs                # wallet generation logic exposed to JS
-│  ├─ mnemonics.rs          # scalar ⇆ mnemonic conversion
-│  └─ english_words.rs      # 1,626-word English list
+│  ├─ lib.rs
+│  ├─ english_words.rs
+│  └─ mnemonics.rs
 ├─ tests/
-│  ├─ regression_test.rs    # regression tests with 2 wallet test vectors
-│  ├─ test_user_seed.rs     # user seed verification test
-│  └─ tos_compatibility.rs  # 100 random wallet compatibility tests
+│  ├─ regression_test.rs
+│  ├─ test_user_seed.rs
+│  └─ tos_compatibility.rs
+├─ tools/
+│  └─ verify/
+│     ├─ README.md
+│     ├─ go.mod
+│     ├─ go.sum
+│     └─ main.go
 └─ web/
-   ├─ index.html            # single-page UI
-   ├─ app.js                # front-end logic and WASM glue
-   ├─ i18n.js               # translations
-   ├─ styles.css            # themes, layout, print styles
-   ├─ qrcode.min.js         # bundled QR generator
-   └─ pkg/                  # wasm-bindgen output (generated)
+   ├─ index.html
+   ├─ app.js
+   ├─ i18n.js
+   ├─ styles.css
+   ├─ qrcode.min.js
+   ├─ tos-logo.svg
+   ├─ tos-logo.png
+   ├─ tos-favicon.svg
+   ├─ favicon.ico
+   ├─ secure-badge.png
+   └─ pkg/
+      ├─ tos_paper_wallet.js
+      └─ tos_paper_wallet_bg.wasm
 ```
 
----
+Notes:
+
+- [src/lib.rs](/Users/tomisetsu/paper-wallet/src/lib.rs) is the active wallet derivation implementation.
+- [src/english_words.rs](/Users/tomisetsu/paper-wallet/src/english_words.rs) and [src/mnemonics.rs](/Users/tomisetsu/paper-wallet/src/mnemonics.rs) are retained from earlier mnemonic work and are not the main path used by the current web UI.
 
 ## Prerequisites
-- Rust toolchain (stable)
-- `wasm-pack` (`cargo install wasm-pack`)
-- `wasm-bindgen-cli` 0.2.92 (`cargo install wasm-bindgen-cli --version 0.2.92`)
 
----
+- Rust stable toolchain
+- `wasm-bindgen-cli` `0.2.92`
+- Python 3 or another simple local static HTTP server
+- Node.js if you want to deploy with Wrangler
 
-## Build & Run
+Install `wasm-bindgen-cli` if needed:
+
 ```bash
-# 1. Fetch dependencies and compile the WASM target
-./build.sh
-
-# 2. Serve locally (choose one)
-cd web
-python3 -m http.server 8000          # built-in HTTP server
-# or
-npx serve                            # any static file server
-
-# 3. Visit http://localhost:8000
+cargo install wasm-bindgen-cli --version 0.2.92
 ```
 
-### Fully Offline Workflow
-1. Build while still online (`./build.sh`).
-2. Transfer the `web/` directory to an air-gapped machine.
-3. Open `web/index.html` directly via the `file://` protocol.
-4. Generate, print, and store wallets; clear browser data when finished.
+## Build
 
----
+```bash
+./build.sh
+```
+
+This compiles the Rust crate for `wasm32-unknown-unknown` and regenerates the files under `web/pkg/`.
+
+## Run Locally
+
+Serve the `web/` directory over local HTTP:
+
+```bash
+cd web
+python3 -m http.server 8000
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000
+```
+
+Important:
+
+- Do not rely on opening `web/index.html` via `file://` in a browser.
+- The current app loads ES modules and WASM through the browser runtime and should be served over HTTP, even on an offline machine.
+
+### Offline Workflow
+
+1. Build the project while online.
+2. Copy the repository or at least the `web/` directory to an offline machine.
+3. Start a local HTTP server on the offline machine.
+4. Open the local `http://127.0.0.1:<port>` URL in the browser.
 
 ## Testing
+
+Run the Rust test suite:
+
 ```bash
-# Run all tests (20 tests total)
 cargo test
-
-# Run only regression tests (8 tests with 2 wallet test vectors)
-cargo test --test regression_test
-
-# Run with verbose output
-cargo test -- --nocapture
 ```
 
-Test coverage:
-- **Unit tests (7)**: Address prefixes, scalar uniqueness, mnemonic integrity, zero-scalar rejection
-- **Regression tests (8)**: 2 real wallet test vectors ensuring compatibility with TOS wallet
-- **Compatibility tests (4)**: 100 random wallets verified against TOS wallet
-- **User seed test (1)**: Verification of specific user-provided seed
+Current test layout:
 
-**SAFETY NOTE**: All test seeds and private keys are publicly known test data. DO NOT use them for real funds.
+- `src/lib.rs`: `2` unit tests
+- [tests/regression_test.rs](/Users/tomisetsu/paper-wallet/tests/regression_test.rs): `8` tests
+- [tests/test_user_seed.rs](/Users/tomisetsu/paper-wallet/tests/test_user_seed.rs): `1` test
+- [tests/tos_compatibility.rs](/Users/tomisetsu/paper-wallet/tests/tos_compatibility.rs): `4` tests
 
----
+Total: `15` Rust tests.
+
+## Go Verifier
+
+Use the Go helper to compare the Rust/WASM wallet bundle against local GTOS code:
+
+```bash
+cd tools/verify
+GOTOOLCHAIN=auto go run . "<24-word mnemonic>"
+```
+
+This requires local checkouts referenced by [tools/verify/go.mod](/Users/tomisetsu/paper-wallet/tools/verify/go.mod).
 
 ## Deployment
 
-### Method 1: Cloudflare Workers with Wrangler CLI (Recommended)
+This repository is configured for Cloudflare Workers static asset deployment.
 
-**Prerequisites:**
-- A Cloudflare account
-- Node.js and npm installed
-- Project built (run `./build.sh`)
+Relevant files:
 
-**Steps:**
+- [wrangler.toml](/Users/tomisetsu/paper-wallet/wrangler.toml)
+- [worker.js](/Users/tomisetsu/paper-wallet/worker.js)
+
+Deploy:
+
 ```bash
-# 1. Install Wrangler
-npm install -g wrangler
-
-# 2. Login to Cloudflare
-wrangler login
-
-# 3. Deploy
-wrangler deploy
+npx wrangler deploy
 ```
 
-Wrangler will read `wrangler.toml`, upload the `web/` directory, deploy `worker.js`, and provide a URL like: `https://tos-paper-wallet.YOUR-SUBDOMAIN.workers.dev`
-
-### Method 2: Cloudflare Workers via Dashboard
-
-1. Build the project: `./build.sh`
-2. Go to: https://dash.cloudflare.com/YOUR-ACCOUNT-ID/workers-and-pages/create/workers
-3. Click **"Create Worker"**, name it `tos-paper-wallet`, click **"Deploy"**
-4. Replace the default code with the contents of `worker.js`:
-   ```javascript
-   export default {
-     async fetch(request, env, ctx) {
-       try {
-         return await env.ASSETS.fetch(request);
-       } catch (err) {
-         return new Response("Not found", { status: 404 });
-       }
-     },
-   };
-   ```
-5. Click **"Save and Deploy"**
-6. In **"Settings"** → **"Bindings"**, add an **"Assets"** binding named `ASSETS`
-7. Go to **"Assets"** tab, upload all files from `web/` directory (including `pkg/` folder contents)
-8. Your wallet will be available at: `https://tos-paper-wallet.YOUR-SUBDOMAIN.workers.dev`
-
-### Method 3: Cloudflare Pages
-
-1. Visit: https://dash.cloudflare.com/YOUR-ACCOUNT-ID/pages
-2. Click **"Create application"** → **"Upload assets"**
-3. Select all files from `web/` directory, name it `tos-paper-wallet`
-4. Click **"Deploy site"**
-5. Your site will be at: `https://tos-paper-wallet.pages.dev`
-
-**Note:** Pages doesn't need `worker.js` - it serves static files directly.
-
-### Method 4: Other Static Hosts
-
-- **GitHub Pages, Netlify, Vercel**, or traditional web servers can host the `web/` directory without modifications.
-
-### Verify Deployment
-
-After deployment, verify:
-1. ✅ Page loads without errors
-2. ✅ "Generate New Wallet" button works
-3. ✅ QR codes appear
-4. ✅ All themes work
-5. ✅ Language switcher works
-6. ✅ No network requests to external domains (check browser DevTools → Network tab)
-
-### Custom Domain (Optional)
-
-1. Go to your worker/page settings
-2. Click **"Triggers"** → **"Custom Domains"**
-3. Click **"Add Custom Domain"**
-4. Enter your domain (e.g., `paperwallet.tos.network`)
-5. Follow the DNS setup instructions
-
-### Update Deployment
-
-**Using Wrangler CLI:**
-```bash
-./build.sh
-wrangler deploy
-```
-
-**Using Dashboard:**
-1. Rebuild: `./build.sh`
-2. Go to your worker/page in Cloudflare dashboard
-3. Upload new files from `web/` directory
-4. Click **"Deploy"**
-
-### Troubleshooting
-
-**Error: "env.ASSETS is undefined"**
-- Make sure you've set up the Assets binding correctly in worker settings.
-
-**Error: "Module not found"**
-- Ensure all files from `web/pkg/` are uploaded: `tos_paper_wallet.js`, `tos_paper_wallet_bg.wasm`
-
-**QR codes not showing**
-- Make sure `qrcode.min.js` is uploaded and accessible.
-
-**WASM loading error**
-- Check that `tos_paper_wallet_bg.wasm` is uploaded
-- Verify file path in `app.js` matches uploaded location
-- Check browser console for error messages
-
-### Cost
-
-- **Cloudflare Workers Free Tier:** 100,000 requests/day
-- **Cloudflare Pages Free Tier:** Unlimited requests, 500 builds/month
-
-Both options are **free** for this use case! 🎉
-
----
+The worker serves static files from `web/` and maps `/` to `/index.html`.
 
 ## Security Notes
-- **RNG source**: `OsRng` (browser WebCrypto on wasm32) with rejection sampling to avoid zero scalars
-- **Public key**: `H * s` where `H` is the TOS signature generator point (`RistrettoPoint::hash_from_bytes::<Sha3_512>("TOS_SIGNATURE_GENERATOR_H")`)
-- **Addresses**: 32-byte compressed key + address type serialized into Bech32 with HRPs `tos` (mainnet) / `tst` (testnet)
-- **Mnemonics**: 24-word payload + checksum word using the canonical TOS word list (1,626 words) and CRC32 checksum
-- **Regression testing**: 2 real wallet test vectors ensure ongoing compatibility with TOS wallet
 
----
+- The page does not load third-party fonts, scripts, or analytics.
+- Wallet material is generated locally in the browser.
+- The app currently stores only UI preferences such as language and theme in `localStorage`.
+- The generated wallet bundle is kept in memory and is not persisted to `localStorage`, `sessionStorage`, or `IndexedDB`.
+- If the user copies a private key or recovery phrase, it is written to the system clipboard.
+- Sensitive material is hidden by default in the UI and must be explicitly revealed.
+- If you deploy the app publicly, the hosting provider will still see normal web request metadata such as IP and User-Agent.
 
 ## License
-BSD 3-Clause. See `LICENSE`.
+
+BSD 3-Clause. See [LICENSE](/Users/tomisetsu/paper-wallet/LICENSE).

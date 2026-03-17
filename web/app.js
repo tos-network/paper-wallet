@@ -516,15 +516,6 @@ function togglePrivateKey() {
         return;
     }
 
-    if (!uiState.secrets.privateKey) {
-        const confirmed = window.confirm(
-            translate('secret.confirm.private', 'Revealing the private key will expose it on screen. Continue?'),
-        );
-        if (!confirmed) {
-            return;
-        }
-    }
-
     uiState.secrets.privateKey = !uiState.secrets.privateKey;
     renderPrivateKeySection();
 }
@@ -532,15 +523,6 @@ function togglePrivateKey() {
 function toggleSeedPhrase() {
     if (!currentBundle) {
         return;
-    }
-
-    if (!uiState.secrets.seedPhrase) {
-        const confirmed = window.confirm(
-            translate('secret.confirm.seed', 'Revealing the recovery phrase will expose it on screen. Continue?'),
-        );
-        if (!confirmed) {
-            return;
-        }
     }
 
     uiState.secrets.seedPhrase = !uiState.secrets.seedPhrase;
